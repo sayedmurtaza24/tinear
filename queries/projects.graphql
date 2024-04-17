@@ -1,0 +1,17 @@
+query GetProjects($after: String, $first: Int = 50) {
+  projects(after: $after, first: $first) {
+    nodes {
+      lead {
+        displayName
+      }
+      progress
+      name
+      id
+      color
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

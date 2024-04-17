@@ -1,0 +1,2 @@
+DEBUG 2024/03/30 19:56:36 ERROR failed to start tinear error="could not open a new TTY: open /dev/tty: device not configured"
+DEBUG 2024/03/31 03:23:52 ERROR failed to start tinear error="could not open a new TTY: open /dev/tty: device not configured"

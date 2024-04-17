@@ -1,0 +1,22 @@
+model:
+  package: models
+  filename: ./linear/models/models.go
+client:
+  package: linear
+  filename: ./linear/client.go
+models:
+  Int:
+    model: github.com/99designs/gqlgen/graphql.Int64
+  Date:
+    model: github.com/99designs/gqlgen/graphql.Time
+federation:
+  version: 2
+endpoint:
+  url: https://api.linear.app/graphql
+  headers:
+    Authorization: "${LINEAR_API_KEY}"
+query:
+  - "./queries/*.graphql"
+generate:
+  clientV2: true
+  clientInterfaceName: "LinearClient"
