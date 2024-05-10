@@ -2,7 +2,7 @@ model:
   package: models
   filename: ./linear/models/models.go
 client:
-  package: linear
+  package: linearClient
   filename: ./linear/client.go
 models:
   Int:

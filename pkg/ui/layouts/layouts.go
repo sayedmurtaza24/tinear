@@ -144,3 +144,42 @@ func cutLeft(s string, cutWidth int) string {
 func clamp(v, lower, upper int) int {
 	return min(max(v, lower), upper)
 }
+
+func SpaceBetween(width int, strs ...string) string {
+	strwidth := 0
+	strsize := 0
+	for _, str := range strs {
+		w, _ := lipgloss.Size(str)
+		strwidth += w
+		strsize += len(str)
+	}
+
+	if strwidth >= width {
+		return strings.Join(strs, "")
+	}
+
+	emptySpace := width - strwidth
+
+	spaceEach := emptySpace / (len(strs) - 1)
+	remaining := emptySpace % (len(strs) - 1)
+
+	m := make([]rune, 0, strsize)
+
+	for i, str := range strs {
+		if i != len(strs)-1 {
+			m = append(m, []rune(str)...)
+
+			for j := 0; j < spaceEach; j++ {
+				m = append(m, ' ')
+			}
+		} else {
+			for j := 0; j < remaining; j++ {
+				m = append(m, ' ')
+			}
+
+			m = append(m, []rune(str)...)
+		}
+	}
+
+	return string(m)
+}

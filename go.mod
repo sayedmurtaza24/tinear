@@ -6,11 +6,23 @@ require (
 	github.com/Yamashou/gqlgenc v0.19.3
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.25.0
+	github.com/charmbracelet/glamour v0.7.0
 	github.com/charmbracelet/lipgloss v0.10.0
 	github.com/mattn/go-runewidth v0.0.15
 )
 
-require github.com/atotto/clipboard v0.1.4 // indirect
+require (
+	github.com/alecthomas/chroma/v2 v2.8.0 // indirect
+	github.com/atotto/clipboard v0.1.4 // indirect
+	github.com/aymerick/douceur v0.2.0 // indirect
+	github.com/dlclark/regexp2 v1.4.0 // indirect
+	github.com/gorilla/css v1.0.0 // indirect
+	github.com/microcosm-cc/bluemonday v1.0.25 // indirect
+	github.com/olekukonko/tablewriter v0.0.5 // indirect
+	github.com/yuin/goldmark v1.5.4 // indirect
+	github.com/yuin/goldmark-emoji v1.0.2 // indirect
+	golang.org/x/net v0.22.0 // indirect
+)
 
 require (
 	github.com/99designs/gqlgen v0.17.45 // indirect
@@ -29,6 +41,6 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.11 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/term v0.6.0 // indirect
+	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )

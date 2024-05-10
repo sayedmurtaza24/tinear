@@ -644,12 +644,33 @@ type AuthOrganizationDomain struct {
 	AuthType       OrganizationDomainAuthType `json:"authType"`
 }
 
+type AuthOrganizationExistsPayload struct {
+	// Whether the operation was successful.
+	Success bool `json:"success"`
+	// Whether the organization exists.
+	Exists bool `json:"exists"`
+}
+
 // An invitation to the organization that has been sent via email.
 type AuthOrganizationInvite struct {
 	// The unique identifier of the entity.
 	ID string `json:"id"`
 	// The time at which the invite will be expiring. Null, if the invite shouldn't expire.
 	ExpiresAt *string `json:"expiresAt,omitempty"`
+}
+
+type AuthOrganizationPayload struct {
+	// Whether the operation was successful.
+	Success bool `json:"success"`
+	// The auth organization that was updated.
+	AuthOrganization *AuthOrganization `json:"authOrganization"`
+}
+
+type AuthOrganizationUpdateInput struct {
+	// The organization's unique URL key.
+	URLKey *string `json:"urlKey,omitempty"`
+	// The organization's unique invite hash.
+	InviteHash *string `json:"inviteHash,omitempty"`
 }
 
 type AuthResolverResponse struct {
@@ -708,6 +729,8 @@ type AuthenticationSession struct {
 	LocationCountryCode *string `json:"locationCountryCode,omitempty"`
 	// Country codes of all seen locations.
 	CountryCodes []string `json:"countryCodes"`
+	// Location region code.
+	LocationRegionCode *string `json:"locationRegionCode,omitempty"`
 	// Location city name.
 	LocationCity *string `json:"locationCity,omitempty"`
 	// Session's user-agent.
@@ -743,6 +766,8 @@ type AuthenticationSessionResponse struct {
 	LocationCountryCode *string `json:"locationCountryCode,omitempty"`
 	// Country codes of all seen locations.
 	CountryCodes []string `json:"countryCodes"`
+	// Location region code.
+	LocationRegionCode *string `json:"locationRegionCode,omitempty"`
 	// Location city name.
 	LocationCity *string `json:"locationCity,omitempty"`
 	// Session's user-agent.
@@ -872,9 +897,11 @@ type CommentCollectionFilter struct {
 	// Filters that the comments creator must satisfy.
 	User *UserFilter `json:"user,omitempty"`
 	// Filters that the comments issue must satisfy.
-	Issue *IssueFilter `json:"issue,omitempty"`
+	Issue *NullableIssueFilter `json:"issue,omitempty"`
 	// Filters that the comments project update must satisfy.
 	ProjectUpdate *ProjectUpdateFilter `json:"projectUpdate,omitempty"`
+	// Filters that the comment parent must satisfy.
+	Parent *NullableCommentFilter `json:"parent,omitempty"`
 	// Filters that the comments document content must satisfy.
 	DocumentContent *DocumentContentFilter `json:"documentContent,omitempty"`
 	// Compound filters, all of which need to be matched by the comment.
@@ -943,9 +970,11 @@ type CommentFilter struct {
 	// Filters that the comments creator must satisfy.
 	User *UserFilter `json:"user,omitempty"`
 	// Filters that the comments issue must satisfy.
-	Issue *IssueFilter `json:"issue,omitempty"`
+	Issue *NullableIssueFilter `json:"issue,omitempty"`
 	// Filters that the comments project update must satisfy.
 	ProjectUpdate *ProjectUpdateFilter `json:"projectUpdate,omitempty"`
+	// Filters that the comment parent must satisfy.
+	Parent *NullableCommentFilter `json:"parent,omitempty"`
 	// Filters that the comments document content must satisfy.
 	DocumentContent *DocumentContentFilter `json:"documentContent,omitempty"`
 	// Compound filters, all of which need to be matched by the comment.
@@ -1142,8 +1171,16 @@ type CustomView struct {
 	Shared bool `json:"shared"`
 	// The model name of the custom view.
 	ModelName string `json:"modelName"`
+	// Projects associated with the custom view.
+	Projects *ProjectConnection `json:"projects"`
 	// Issues associated with the custom view.
 	Issues *IssueConnection `json:"issues"`
+	// The current users view preferences for this custom view.
+	UserViewPreferences *ViewPreferences `json:"userViewPreferences,omitempty"`
+	// The organizations default view preferences for this custom view.
+	OrganizationViewPreferences *ViewPreferences `json:"organizationViewPreferences,omitempty"`
+	// The calculated view preferences values for this custom view.
+	ViewPreferencesValues *ViewPreferencesValues `json:"viewPreferencesValues,omitempty"`
 }
 
 func (CustomView) IsNode() {}
@@ -1177,9 +1214,9 @@ type CustomViewCreateInput struct {
 	// The filters applied to issues in the custom view.
 	Filters *string `json:"filters,omitempty"`
 	// The filter applied to issues in the custom view.
-	FilterData *string `json:"filterData,omitempty"`
+	FilterData *IssueFilter `json:"filterData,omitempty"`
 	// The project filter applied to issues in the custom view.
-	ProjectFilterData *string `json:"projectFilterData,omitempty"`
+	ProjectFilterData *ProjectFilter `json:"projectFilterData,omitempty"`
 	// Whether the custom view is shared with everyone in the organization.
 	Shared *bool `json:"shared,omitempty"`
 }
@@ -1334,9 +1371,9 @@ type CustomViewUpdateInput struct {
 	// The filters applied to issues in the custom view.
 	Filters *string `json:"filters,omitempty"`
 	// The filter applied to issues in the custom view.
-	FilterData *string `json:"filterData,omitempty"`
+	FilterData *IssueFilter `json:"filterData,omitempty"`
 	// The project filter applied to issues in the custom view.
-	ProjectFilterData *string `json:"projectFilterData,omitempty"`
+	ProjectFilterData *ProjectFilter `json:"projectFilterData,omitempty"`
 	// Whether the custom view is shared with everyone in the organization.
 	Shared *bool `json:"shared,omitempty"`
 }
@@ -1665,7 +1702,71 @@ func (this DeletePayload) GetLastSyncID() float64 { return this.LastSyncID }
 // Whether the operation was successful.
 func (this DeletePayload) GetSuccess() bool { return this.Success }
 
-// A document for a project.
+// A diary entry
+type DiaryEntry struct {
+	// The unique identifier of the entity.
+	ID string `json:"id"`
+	// The time at which the entity was created.
+	CreatedAt string `json:"createdAt"`
+	// The last time at which the entity was meaningfully updated, i.e. for all changes of syncable properties except those
+	//     for which updates should not produce an update to updatedAt (see skipUpdatedAtKeys). This is the same as the creation time if the entity hasn't
+	//     been updated after creation.
+	UpdatedAt string `json:"updatedAt"`
+	// The time at which the entity was archived. Null if the entity has not been archived.
+	ArchivedAt *string `json:"archivedAt,omitempty"`
+	// [Internal] The entry content as a Prosemirror document.
+	BodyData string `json:"bodyData"`
+	// The user who the diary belongs to.
+	User *User `json:"user"`
+	// The date for which the entry is created
+	Date string `json:"date"`
+	// The canonical url for the DiaryEntry.
+	URL string `json:"url"`
+}
+
+func (DiaryEntry) IsNode() {}
+
+// The unique identifier of the entity.
+func (this DiaryEntry) GetID() string { return this.ID }
+
+type DiaryEntryConnection struct {
+	Edges    []*DiaryEntryEdge `json:"edges"`
+	Nodes    []*DiaryEntry     `json:"nodes"`
+	PageInfo *PageInfo         `json:"pageInfo"`
+}
+
+type DiaryEntryCreateInput struct {
+	// The identifier in UUID v4 format. If none is provided, the backend will generate one.
+	ID *string `json:"id,omitempty"`
+	// The date for which the entry is created.
+	Date *string `json:"date,omitempty"`
+	// [Internal] The comment content as a Prosemirror diaryEntry.
+	BodyData *string `json:"bodyData,omitempty"`
+}
+
+type DiaryEntryEdge struct {
+	Node *DiaryEntry `json:"node"`
+	// Used in `before` and `after` args
+	Cursor string `json:"cursor"`
+}
+
+type DiaryEntryPayload struct {
+	// The identifier of the last sync operation.
+	LastSyncID float64 `json:"lastSyncId"`
+	// The diary entry that was created or updated.
+	DiaryEntry *DiaryEntry `json:"diaryEntry"`
+	// Whether the operation was successful.
+	Success bool `json:"success"`
+}
+
+type DiaryEntryUpdateInput struct {
+	// [Internal] The comment content as a Prosemirror diaryEntry.
+	BodyData *string `json:"bodyData,omitempty"`
+	// The date for which the entry is created.
+	Date *string `json:"date,omitempty"`
+}
+
+// A document that can be attached to different entities.
 type Document struct {
 	// The unique identifier of the entity.
 	ID string `json:"id"`
@@ -1688,19 +1789,23 @@ type Document struct {
 	// The user who last updated the document.
 	UpdatedBy *User `json:"updatedBy"`
 	// The project that the document is associated with.
-	Project *Project `json:"project"`
+	Project *Project `json:"project,omitempty"`
+	// [Internal] The initiative that the document is associated with.
+	Initiative *Initiative `json:"initiative,omitempty"`
 	// The document's unique URL slug.
 	SlugID string `json:"slugId"`
 	// The last template that was applied to this document.
 	LastAppliedTemplate *Template `json:"lastAppliedTemplate,omitempty"`
 	// The time at which the document was hidden. Null if the entity has not been hidden.
 	HiddenAt *string `json:"hiddenAt,omitempty"`
-	// The order of the item in the project resources list.
+	// The order of the item in the resources list.
 	SortOrder float64 `json:"sortOrder"`
 	// The documents content in markdown format.
 	Content *string `json:"content,omitempty"`
 	// [Internal] The documents content as YJS state.
 	ContentState *string `json:"contentState,omitempty"`
+	// The canonical url for the document.
+	URL string `json:"url"`
 	// [Internal] The documents content as a Prosemirror document.
 	ContentData *string `json:"contentData,omitempty"`
 }
@@ -1766,6 +1871,8 @@ type DocumentContent struct {
 	Issue *Issue `json:"issue,omitempty"`
 	// The project that the content is associated with.
 	Project *Project `json:"project,omitempty"`
+	// The initiative that the content is associated with.
+	Initiative *Initiative `json:"initiative,omitempty"`
 	// The project milestone that the content is associated with.
 	ProjectMilestone *ProjectMilestone `json:"projectMilestone,omitempty"`
 	// The document that the content is associated with.
@@ -1854,10 +1961,12 @@ type DocumentCreateInput struct {
 	// The document content as markdown.
 	Content *string `json:"content,omitempty"`
 	// Related project for the document.
-	ProjectID string `json:"projectId"`
+	ProjectID *string `json:"projectId,omitempty"`
+	// [Internal] Related initiative for the document.
+	InitiativeID *string `json:"initiativeId,omitempty"`
 	// The ID of the last template applied to the document.
 	LastAppliedTemplateID *string `json:"lastAppliedTemplateId,omitempty"`
-	// The order of the item in the project resources list.
+	// The order of the item in the resources list.
 	SortOrder *float64 `json:"sortOrder,omitempty"`
 }
 
@@ -1888,6 +1997,101 @@ type DocumentFilter struct {
 	// Compound filters, one of which need to be matched by the document.
 	Or []*DocumentFilter `json:"or,omitempty"`
 }
+
+// A document related notification.
+type DocumentNotification struct {
+	// The unique identifier of the entity.
+	ID string `json:"id"`
+	// The time at which the entity was created.
+	CreatedAt string `json:"createdAt"`
+	// The last time at which the entity was meaningfully updated, i.e. for all changes of syncable properties except those
+	//     for which updates should not produce an update to updatedAt (see skipUpdatedAtKeys). This is the same as the creation time if the entity hasn't
+	//     been updated after creation.
+	UpdatedAt string `json:"updatedAt"`
+	// The time at which the entity was archived. Null if the entity has not been archived.
+	ArchivedAt *string `json:"archivedAt,omitempty"`
+	// Notification type.
+	Type string `json:"type"`
+	// The user that caused the notification.
+	Actor *User `json:"actor,omitempty"`
+	// The external user that caused the notification.
+	ExternalUserActor *ExternalUser `json:"externalUserActor,omitempty"`
+	// The user that received the notification.
+	User *User `json:"user"`
+	// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
+	ReadAt *string `json:"readAt,omitempty"`
+	// The time at when an email reminder for this notification was sent to the user. Null, if no email
+	//     reminder has been sent.
+	EmailedAt *string `json:"emailedAt,omitempty"`
+	// The time until a notification will be snoozed. After that it will appear in the inbox again.
+	SnoozedUntilAt *string `json:"snoozedUntilAt,omitempty"`
+	// The time at which a notification was unsnoozed..
+	UnsnoozedAt *string `json:"unsnoozedAt,omitempty"`
+	// The bot that caused the notification.
+	BotActor *ActorBot `json:"botActor,omitempty"`
+}
+
+func (DocumentNotification) IsEntity() {}
+
+// The unique identifier of the entity.
+func (this DocumentNotification) GetID() string { return this.ID }
+
+// The time at which the entity was created.
+func (this DocumentNotification) GetCreatedAt() string { return this.CreatedAt }
+
+// The last time at which the entity was meaningfully updated, i.e. for all changes of syncable properties except those
+//
+//	for which updates should not produce an update to updatedAt (see skipUpdatedAtKeys). This is the same as the creation time if the entity hasn't
+//	been updated after creation.
+func (this DocumentNotification) GetUpdatedAt() string { return this.UpdatedAt }
+
+// The time at which the entity was archived. Null if the entity has not been archived.
+func (this DocumentNotification) GetArchivedAt() *string { return this.ArchivedAt }
+
+func (DocumentNotification) IsNode() {}
+
+// The unique identifier of the entity.
+
+func (DocumentNotification) IsNotification() {}
+
+// The unique identifier of the entity.
+
+// The time at which the entity was created.
+
+// The last time at which the entity was meaningfully updated, i.e. for all changes of syncable properties except those
+//     for which updates should not produce an update to updatedAt (see skipUpdatedAtKeys). This is the same as the creation time if the entity hasn't
+//     been updated after creation.
+
+// The time at which the entity was archived. Null if the entity has not been archived.
+
+// Notification type.
+func (this DocumentNotification) GetType() string { return this.Type }
+
+// The user that caused the notification.
+func (this DocumentNotification) GetActor() *User { return this.Actor }
+
+// The external user that caused the notification.
+func (this DocumentNotification) GetExternalUserActor() *ExternalUser { return this.ExternalUserActor }
+
+// The user that received the notification.
+func (this DocumentNotification) GetUser() *User { return this.User }
+
+// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
+func (this DocumentNotification) GetReadAt() *string { return this.ReadAt }
+
+// The time at when an email reminder for this notification was sent to the user. Null, if no email
+//
+//	reminder has been sent.
+func (this DocumentNotification) GetEmailedAt() *string { return this.EmailedAt }
+
+// The time until a notification will be snoozed. After that it will appear in the inbox again.
+func (this DocumentNotification) GetSnoozedUntilAt() *string { return this.SnoozedUntilAt }
+
+// The time at which a notification was unsnoozed..
+func (this DocumentNotification) GetUnsnoozedAt() *string { return this.UnsnoozedAt }
+
+// The bot that caused the notification.
+func (this DocumentNotification) GetBotActor() *ActorBot { return this.BotActor }
 
 type DocumentPayload struct {
 	// The identifier of the last sync operation.
@@ -1930,19 +2134,23 @@ type DocumentSearchResult struct {
 	// The user who last updated the document.
 	UpdatedBy *User `json:"updatedBy"`
 	// The project that the document is associated with.
-	Project *Project `json:"project"`
+	Project *Project `json:"project,omitempty"`
+	// [Internal] The initiative that the document is associated with.
+	Initiative *Initiative `json:"initiative,omitempty"`
 	// The document's unique URL slug.
 	SlugID string `json:"slugId"`
 	// The last template that was applied to this document.
 	LastAppliedTemplate *Template `json:"lastAppliedTemplate,omitempty"`
 	// The time at which the document was hidden. Null if the entity has not been hidden.
 	HiddenAt *string `json:"hiddenAt,omitempty"`
-	// The order of the item in the project resources list.
+	// The order of the item in the resources list.
 	SortOrder float64 `json:"sortOrder"`
 	// The documents content in markdown format.
 	Content *string `json:"content,omitempty"`
 	// [Internal] The documents content as YJS state.
 	ContentState *string `json:"contentState,omitempty"`
+	// The canonical url for the document.
+	URL string `json:"url"`
 	// [Internal] The documents content as a Prosemirror document.
 	ContentData *string `json:"contentData,omitempty"`
 	// Metadata related to search result.
@@ -1979,11 +2187,13 @@ type DocumentUpdateInput struct {
 	Content *string `json:"content,omitempty"`
 	// Related project for the document.
 	ProjectID *string `json:"projectId,omitempty"`
+	// [Internal] Related initiative for the document.
+	InitiativeID *string `json:"initiativeId,omitempty"`
 	// The ID of the last template applied to the document.
 	LastAppliedTemplateID *string `json:"lastAppliedTemplateId,omitempty"`
 	// The time at which the document was hidden.
 	HiddenAt *string `json:"hiddenAt,omitempty"`
-	// The order of the item in the project resources list.
+	// The order of the item in the resources list.
 	SortOrder *float64 `json:"sortOrder,omitempty"`
 }
 
@@ -2074,6 +2284,8 @@ type EmailUserAccountAuthChallengeInput struct {
 	SignupCode *string `json:"signupCode,omitempty"`
 	// The organization invite link to associate with this authentication.
 	InviteLink *string `json:"inviteLink,omitempty"`
+	// Whether to only return the login code. This is used by mobile apps to skip showing the login link.
+	LoginCodeOnly *bool `json:"loginCodeOnly,omitempty"`
 }
 
 type EmailUserAccountAuthChallengeResponse struct {
@@ -2140,6 +2352,78 @@ type EmojiPayload struct {
 	Emoji *Emoji `json:"emoji"`
 	// Whether the operation was successful.
 	Success bool `json:"success"`
+}
+
+// An external link for an entity like initiative, etc...
+type EntityExternalLink struct {
+	// The unique identifier of the entity.
+	ID string `json:"id"`
+	// The time at which the entity was created.
+	CreatedAt string `json:"createdAt"`
+	// The last time at which the entity was meaningfully updated, i.e. for all changes of syncable properties except those
+	//     for which updates should not produce an update to updatedAt (see skipUpdatedAtKeys). This is the same as the creation time if the entity hasn't
+	//     been updated after creation.
+	UpdatedAt string `json:"updatedAt"`
+	// The time at which the entity was archived. Null if the entity has not been archived.
+	ArchivedAt *string `json:"archivedAt,omitempty"`
+	// The link's URL.
+	URL string `json:"url"`
+	// The link's label.
+	Label string `json:"label"`
+	// The order of the item in the resources list.
+	SortOrder float64 `json:"sortOrder"`
+	// The user who created the link.
+	Creator *User `json:"creator"`
+	// The initiative that the link is associated with.
+	Initiative *Initiative `json:"initiative"`
+}
+
+func (EntityExternalLink) IsNode() {}
+
+// The unique identifier of the entity.
+func (this EntityExternalLink) GetID() string { return this.ID }
+
+type EntityExternalLinkConnection struct {
+	Edges    []*EntityExternalLinkEdge `json:"edges"`
+	Nodes    []*EntityExternalLink     `json:"nodes"`
+	PageInfo *PageInfo                 `json:"pageInfo"`
+}
+
+type EntityExternalLinkCreateInput struct {
+	// The identifier in UUID v4 format. If none is provided, the backend will generate one.
+	ID *string `json:"id,omitempty"`
+	// The URL of the link.
+	URL string `json:"url"`
+	// The label for the link.
+	Label string `json:"label"`
+	// Related initiative link.
+	InitiativeID string `json:"initiativeId"`
+	// The order of the item in the entities resources list.
+	SortOrder *float64 `json:"sortOrder,omitempty"`
+}
+
+type EntityExternalLinkEdge struct {
+	Node *EntityExternalLink `json:"node"`
+	// Used in `before` and `after` args
+	Cursor string `json:"cursor"`
+}
+
+type EntityExternalLinkPayload struct {
+	// The identifier of the last sync operation.
+	LastSyncID float64 `json:"lastSyncId"`
+	// The link that was created or updated.
+	EntityExternalLink *EntityExternalLink `json:"entityExternalLink"`
+	// Whether the operation was successful.
+	Success bool `json:"success"`
+}
+
+type EntityExternalLinkUpdateInput struct {
+	// The URL of the link.
+	URL *string `json:"url,omitempty"`
+	// The label for the link.
+	Label *string `json:"label,omitempty"`
+	// The order of the item in the entities resources list.
+	SortOrder *float64 `json:"sortOrder,omitempty"`
 }
 
 // Comparator for estimates.
@@ -2712,7 +2996,7 @@ type Initiative struct {
 	ArchivedAt *string `json:"archivedAt,omitempty"`
 	// The name of the initiative.
 	Name string `json:"name"`
-	// The description of the initiative.
+	// [Internal] The description of the initiative.
 	Description *string `json:"description,omitempty"`
 	// The organization of the initiative.
 	Organization *Organization `json:"organization"`
@@ -2732,6 +3016,8 @@ type Initiative struct {
 	TargetDateResolution *DateResolutionType `json:"targetDateResolution,omitempty"`
 	// Projects associated with the initiative.
 	Projects *ProjectConnection `json:"projects"`
+	// Links associated with the initiative.
+	Links *EntityExternalLinkConnection `json:"links"`
 }
 
 func (Initiative) IsNode() {}
@@ -2795,7 +3081,7 @@ type InitiativeCreateInput struct {
 	ID *string `json:"id,omitempty"`
 	// The name of the initiative.
 	Name string `json:"name"`
-	// The description of the initiative.
+	// [Internal] The description of the initiative.
 	Description *string `json:"description,omitempty"`
 	// The owner of the initiative.
 	OwnerID *string `json:"ownerId,omitempty"`
@@ -2910,7 +3196,7 @@ type InitiativeToProjectUpdateInput struct {
 type InitiativeUpdateInput struct {
 	// The name of the initiative.
 	Name *string `json:"name,omitempty"`
-	// The description of the initiative.
+	// [Internal] The description of the initiative.
 	Description *string `json:"description,omitempty"`
 	// The owner of the initiative.
 	OwnerID *string `json:"ownerId,omitempty"`
@@ -3272,9 +3558,9 @@ type Issue struct {
 	AutoArchivedAt *string `json:"autoArchivedAt,omitempty"`
 	// The date at which the issue is due.
 	DueDate *string `json:"dueDate,omitempty"`
-	// [Internal] The time at which the issue's SLA began.
+	// The time at which the issue's SLA began.
 	SLAStartedAt *string `json:"slaStartedAt,omitempty"`
-	// [Internal] The time at which the issue's SLA will breach.
+	// The time at which the issue's SLA will breach.
 	SLABreachesAt *string `json:"slaBreachesAt,omitempty"`
 	// A flag that indicates whether the issue is in the trash bin.
 	Trashed *bool `json:"trashed,omitempty"`
@@ -3796,7 +4082,8 @@ type IssueHistory struct {
 	// What the due date was changed to.
 	ToDueDate *string `json:"toDueDate,omitempty"`
 	// [Internal] Serialized JSON representing changes for certain non-relational properties.
-	Changes *string `json:"changes,omitempty"`
+	Changes                           *string `json:"changes,omitempty"`
+	TriageResponsibilityNotifiedUsers []*User `json:"triageResponsibilityNotifiedUsers,omitempty"`
 	// The bot that performed the action.
 	BotActor      *ActorBot     `json:"botActor,omitempty"`
 	AddedLabels   []*IssueLabel `json:"addedLabels,omitempty"`
@@ -3888,6 +4175,14 @@ type IssueImportPayload struct {
 	IssueImport *IssueImport `json:"issueImport,omitempty"`
 	// Whether the operation was successful.
 	Success bool `json:"success"`
+}
+
+// Whether an issue import can be synced at the end of an import or not
+type IssueImportSyncCheckPayload struct {
+	// Returns true if the import can be synced, false otherwise
+	CanSync bool `json:"canSync"`
+	// An error message with a root cause of why the import cannot be synced
+	Error *string `json:"error,omitempty"`
 }
 
 type IssueImportUpdateInput struct {
@@ -4274,9 +4569,9 @@ type IssueSearchResult struct {
 	AutoArchivedAt *string `json:"autoArchivedAt,omitempty"`
 	// The date at which the issue is due.
 	DueDate *string `json:"dueDate,omitempty"`
-	// [Internal] The time at which the issue's SLA began.
+	// The time at which the issue's SLA began.
 	SLAStartedAt *string `json:"slaStartedAt,omitempty"`
-	// [Internal] The time at which the issue's SLA will breach.
+	// The time at which the issue's SLA will breach.
 	SLABreachesAt *string `json:"slaBreachesAt,omitempty"`
 	// A flag that indicates whether the issue is in the trash bin.
 	Trashed *bool `json:"trashed,omitempty"`
@@ -4829,6 +5124,34 @@ type NotionSettingsInput struct {
 	WorkspaceName string `json:"workspaceName"`
 }
 
+// Comment filtering options.
+type NullableCommentFilter struct {
+	// Comparator for the identifier.
+	ID *IDComparator `json:"id,omitempty"`
+	// Comparator for the created at date.
+	CreatedAt *DateComparator `json:"createdAt,omitempty"`
+	// Comparator for the updated at date.
+	UpdatedAt *DateComparator `json:"updatedAt,omitempty"`
+	// Comparator for the comments body.
+	Body *StringComparator `json:"body,omitempty"`
+	// Filters that the comments creator must satisfy.
+	User *UserFilter `json:"user,omitempty"`
+	// Filters that the comments issue must satisfy.
+	Issue *NullableIssueFilter `json:"issue,omitempty"`
+	// Filters that the comments project update must satisfy.
+	ProjectUpdate *ProjectUpdateFilter `json:"projectUpdate,omitempty"`
+	// Filters that the comment parent must satisfy.
+	Parent *NullableCommentFilter `json:"parent,omitempty"`
+	// Filters that the comments document content must satisfy.
+	DocumentContent *DocumentContentFilter `json:"documentContent,omitempty"`
+	// Filter based on the existence of the relation.
+	Null *bool `json:"null,omitempty"`
+	// Compound filters, all of which need to be matched by the comment.
+	And []*NullableCommentFilter `json:"and,omitempty"`
+	// Compound filters, one of which need to be matched by the comment.
+	Or []*NullableCommentFilter `json:"or,omitempty"`
+}
+
 // Cycle filtering options.
 type NullableCycleFilter struct {
 	// Comparator for the identifier.
@@ -5193,6 +5516,7 @@ type NullableTemplateFilter struct {
 	Or []*NullableTemplateFilter `json:"or,omitempty"`
 }
 
+// Comparator for optional timeless dates.
 type NullableTimelessDateComparator struct {
 	// Equals constraint.
 	Eq *string `json:"eq,omitempty"`
@@ -5456,9 +5780,11 @@ type OauthClientEdge struct {
 }
 
 type OauthToken struct {
-	ID        float64 `json:"id"`
-	RevokedAt *string `json:"revokedAt,omitempty"`
-	CreatedAt string  `json:"createdAt"`
+	ID float64 `json:"id"`
+	// Scopes associated with the access token.
+	Scope     []string `json:"scope"`
+	RevokedAt *string  `json:"revokedAt,omitempty"`
+	CreatedAt string   `json:"createdAt"`
 	// OAuth2 client for which the access token belongs to.
 	Client   *AuthOauthClient `json:"client"`
 	ClientID string           `json:"clientId"`
@@ -5536,10 +5862,14 @@ type Organization struct {
 	PreviousURLKeys []string `json:"previousUrlKeys"`
 	// Whether member users are allowed to send invites.
 	AllowMembersToInvite *bool `json:"allowMembersToInvite,omitempty"`
+	// [ALPHA] Theme settings for the organization.
+	ThemeSettings *string `json:"themeSettings,omitempty"`
 	// The feature release channel the organization belongs to.
 	ReleaseChannel ReleaseChannel `json:"releaseChannel"`
 	// Which day count to use for SLA calculations.
 	SLADayCount SLADayCountType `json:"slaDayCount"`
+	// The organization's project statuses.
+	ProjectStatuses []*ProjectStatus `json:"projectStatuses"`
 	// Users associated with the organization.
 	Users *UserConnection `json:"users"`
 	// Teams associated with the organization.
@@ -5778,6 +6108,13 @@ type OrganizationInviteUpdateInput struct {
 	TeamIds []string `json:"teamIds"`
 }
 
+type OrganizationMeta struct {
+	// The region the organization is hosted in.
+	Region string `json:"region"`
+	// Allowed authentication providers, empty array means all are allowed.
+	AllowedAuthServices []string `json:"allowedAuthServices"`
+}
+
 type OrganizationPayload struct {
 	// The identifier of the last sync operation.
 	LastSyncID float64 `json:"lastSyncId"`
@@ -5836,6 +6173,8 @@ type OrganizationUpdateInput struct {
 	SLADayCount *SLADayCountType `json:"slaDayCount,omitempty"`
 	// Whether member users are allowed to send invites.
 	AllowMembersToInvite *bool `json:"allowMembersToInvite,omitempty"`
+	// [ALPHA] Theme settings for the organization.
+	ThemeSettings *string `json:"themeSettings,omitempty"`
 }
 
 type PageInfo struct {
@@ -6135,6 +6474,22 @@ type ProjectCreateInput struct {
 	TargetDateResolution *DateResolutionType `json:"targetDateResolution,omitempty"`
 	// The sort order for the project within shared views.
 	SortOrder *float64 `json:"sortOrder,omitempty"`
+}
+
+type ProjectDetailSuggestionInput struct {
+	// The name of the project.
+	Name string `json:"name"`
+	// The description for the project.
+	Description *string `json:"description,omitempty"`
+	// The content of the project as markdown.
+	DocumentContent *string `json:"documentContent,omitempty"`
+}
+
+type ProjectDetailSuggestionPayload struct {
+	// The suggested project color.
+	Color *string `json:"color,omitempty"`
+	// The suggested view icon.
+	Icon *string `json:"icon,omitempty"`
 }
 
 type ProjectEdge struct {
@@ -6613,6 +6968,96 @@ type ProjectPayload struct {
 	Success bool `json:"success"`
 }
 
+// A relation between two projects.
+type ProjectRelation struct {
+	// The unique identifier of the entity.
+	ID string `json:"id"`
+	// The time at which the entity was created.
+	CreatedAt string `json:"createdAt"`
+	// The last time at which the entity was meaningfully updated, i.e. for all changes of syncable properties except those
+	//     for which updates should not produce an update to updatedAt (see skipUpdatedAtKeys). This is the same as the creation time if the entity hasn't
+	//     been updated after creation.
+	UpdatedAt string `json:"updatedAt"`
+	// The time at which the entity was archived. Null if the entity has not been archived.
+	ArchivedAt *string `json:"archivedAt,omitempty"`
+	// The relationship of the project with the related project.
+	Type string `json:"type"`
+	// The project whose relationship is being described.
+	Project *Project `json:"project"`
+	// The milestone within the project whose relationship is being described.
+	ProjectMilestone *ProjectMilestone `json:"projectMilestone,omitempty"`
+	// The type of anchor on the project end of the relation.
+	AnchorType string `json:"anchorType"`
+	// The related project.
+	RelatedProject *Project `json:"relatedProject"`
+	// The milestone within the related project whose relationship is being described.
+	RelatedProjectMilestone *ProjectMilestone `json:"relatedProjectMilestone,omitempty"`
+	// The type of anchor on the relatedProject end of the relation.
+	RelatedAnchorType string `json:"relatedAnchorType"`
+}
+
+func (ProjectRelation) IsNode() {}
+
+// The unique identifier of the entity.
+func (this ProjectRelation) GetID() string { return this.ID }
+
+type ProjectRelationConnection struct {
+	Edges    []*ProjectRelationEdge `json:"edges"`
+	Nodes    []*ProjectRelation     `json:"nodes"`
+	PageInfo *PageInfo              `json:"pageInfo"`
+}
+
+type ProjectRelationCreateInput struct {
+	// The identifier in UUID v4 format. If none is provided, the backend will generate one.
+	ID *string `json:"id,omitempty"`
+	// The type of relation of the project to the related project.
+	Type string `json:"type"`
+	// The identifier of the project that is related to another project.
+	ProjectID string `json:"projectId"`
+	// The identifier of the project milestone.
+	ProjectMilestoneID *string `json:"projectMilestoneId,omitempty"`
+	// The type of the anchor for the project.
+	AnchorType string `json:"anchorType"`
+	// The identifier of the related project.
+	RelatedProjectID string `json:"relatedProjectId"`
+	// The identifier of the related project milestone.
+	RelatedProjectMilestoneID *string `json:"relatedProjectMilestoneId,omitempty"`
+	// The type of the anchor for the related project.
+	RelatedAnchorType string `json:"relatedAnchorType"`
+}
+
+type ProjectRelationEdge struct {
+	Node *ProjectRelation `json:"node"`
+	// Used in `before` and `after` args
+	Cursor string `json:"cursor"`
+}
+
+type ProjectRelationPayload struct {
+	// The identifier of the last sync operation.
+	LastSyncID float64 `json:"lastSyncId"`
+	// The project relation that was created or updated.
+	ProjectRelation *ProjectRelation `json:"projectRelation"`
+	// Whether the operation was successful.
+	Success bool `json:"success"`
+}
+
+type ProjectRelationUpdateInput struct {
+	// The type of relation of the project to the related project.
+	Type *string `json:"type,omitempty"`
+	// The identifier of the project that is related to another project.
+	ProjectID *string `json:"projectId,omitempty"`
+	// The identifier of the project milestone.
+	ProjectMilestoneID *string `json:"projectMilestoneId,omitempty"`
+	// The type of the anchor for the project.
+	AnchorType *string `json:"anchorType,omitempty"`
+	// The identifier of the related project.
+	RelatedProjectID *string `json:"relatedProjectId,omitempty"`
+	// The identifier of the related project milestone.
+	RelatedProjectMilestoneID *string `json:"relatedProjectMilestoneId,omitempty"`
+	// The type of the anchor for the related project.
+	RelatedAnchorType *string `json:"relatedAnchorType,omitempty"`
+}
+
 type ProjectSearchPayload struct {
 	Edges    []*ProjectSearchResultEdge `json:"edges"`
 	Nodes    []*ProjectSearchResult     `json:"nodes"`
@@ -6751,7 +7196,7 @@ type ProjectSort struct {
 	Order *PaginationSortOrder `json:"order,omitempty"`
 }
 
-// [ALPHA] A project status.
+// A project status.
 type ProjectStatus struct {
 	// The unique identifier of the entity.
 	ID string `json:"id"`
@@ -6840,6 +7285,8 @@ type ProjectUpdate struct {
 	User *User `json:"user"`
 	// The time the project update was edited.
 	EditedAt *string `json:"editedAt,omitempty"`
+	// Emoji reaction summary, grouped by emoji type.
+	ReactionData string `json:"reactionData"`
 	// [Internal] Serialized JSON representing current state of the project properties when posting the project update.
 	InfoSnapshot *string `json:"infoSnapshot,omitempty"`
 	// Whether project update diff should be hidden.
@@ -6852,6 +7299,8 @@ type ProjectUpdate struct {
 	Diff *string `json:"diff,omitempty"`
 	// The diff between the current update and the previous one, formatted as markdown.
 	DiffMarkdown *string `json:"diffMarkdown,omitempty"`
+	// Comments associated with the project update.
+	Comments *CommentConnection `json:"comments"`
 }
 
 func (ProjectUpdate) IsNode() {}
@@ -7196,6 +7645,39 @@ type RelationExistsComparator struct {
 	Neq *bool `json:"neq,omitempty"`
 }
 
+// A reminder that can be attached to different entities.
+type Reminder struct {
+	// The unique identifier of the entity.
+	ID string `json:"id"`
+	// The time at which the entity was created.
+	CreatedAt string `json:"createdAt"`
+	// The last time at which the entity was meaningfully updated, i.e. for all changes of syncable properties except those
+	//     for which updates should not produce an update to updatedAt (see skipUpdatedAtKeys). This is the same as the creation time if the entity hasn't
+	//     been updated after creation.
+	UpdatedAt string `json:"updatedAt"`
+	// The time at which the entity was archived. Null if the entity has not been archived.
+	ArchivedAt *string `json:"archivedAt,omitempty"`
+	// The user that created a reminder.
+	User *User `json:"user"`
+	// The time when a reminder triggers a notification in the user's inbox.
+	RemindAt string `json:"remindAt"`
+	// Scheduling settings for recurring reminders.
+	Schedule string `json:"schedule"`
+	// The reminder's comment.
+	Comment *string `json:"comment,omitempty"`
+	// The issue that the reminder is associated with.
+	IssueID *Issue `json:"issueId,omitempty"`
+	// The document that the reminder is associated with.
+	DocumentID *Document `json:"documentId,omitempty"`
+	// The project that the reminder is associated with.
+	ProjectID *Project `json:"projectId,omitempty"`
+}
+
+func (Reminder) IsNode() {}
+
+// The unique identifier of the entity.
+func (this Reminder) GetID() string { return this.ID }
+
 // A roadmap for projects.
 type Roadmap struct {
 	// The unique identifier of the entity.
@@ -7226,6 +7708,8 @@ type Roadmap struct {
 	Color *string `json:"color,omitempty"`
 	// Projects associated with the roadmap.
 	Projects *ProjectConnection `json:"projects"`
+	// The canonical url for the roadmap.
+	URL string `json:"url"`
 }
 
 func (Roadmap) IsNode() {}
@@ -7535,7 +8019,7 @@ type SlackChannelNameMapping struct {
 	IsPrivate *bool `json:"isPrivate,omitempty"`
 	// Whether or not the Slack channel is shared with an external org.
 	IsShared *bool `json:"isShared,omitempty"`
-	// Whether or not we the Linear Asks bot has been added to this Slack channel.
+	// Whether or not the Linear Asks bot has been added to this Slack channel.
 	BotAdded *bool `json:"botAdded,omitempty"`
 	// Which teams are connected to the channel and settings for those teams.
 	Teams []*SlackAsksTeamSettings `json:"teams"`
@@ -7547,6 +8031,8 @@ type SlackChannelNameMapping struct {
 	AutoCreateOnBotMention *bool `json:"autoCreateOnBotMention,omitempty"`
 	// The optional template ID to use for Asks auto-created in this channel. If not set, auto-created Asks won't use any template.
 	AutoCreateTemplateID *string `json:"autoCreateTemplateId,omitempty"`
+	// Whether or not synced Slack threads should be updated with a message and emoji when their Ask is canceled.
+	PostCancellationUpdates *bool `json:"postCancellationUpdates,omitempty"`
 }
 
 type SlackChannelNameMappingInput struct {
@@ -7558,7 +8044,7 @@ type SlackChannelNameMappingInput struct {
 	IsPrivate *bool `json:"isPrivate,omitempty"`
 	// Whether or not the Slack channel is shared with an external org.
 	IsShared *bool `json:"isShared,omitempty"`
-	// Whether or not we the Linear Asks bot has been added to this Slack channel.
+	// Whether or not the Linear Asks bot has been added to this Slack channel.
 	BotAdded *bool `json:"botAdded,omitempty"`
 	// Which teams are connected to the channel and settings for those teams.
 	Teams []*SlackAsksTeamSettingsInput `json:"teams"`
@@ -7570,6 +8056,8 @@ type SlackChannelNameMappingInput struct {
 	AutoCreateOnBotMention *bool `json:"autoCreateOnBotMention,omitempty"`
 	// The optional template ID to use for Asks auto-created in this channel. If not set, auto-created Asks won't use any template.
 	AutoCreateTemplateID *string `json:"autoCreateTemplateId,omitempty"`
+	// Whether or not synced Slack threads should be updated with a message and emoji when their Ask is canceled.
+	PostCancellationUpdates *bool `json:"postCancellationUpdates,omitempty"`
 }
 
 // Slack notification specific settings.
@@ -7719,6 +8207,11 @@ type SubTypeComparator struct {
 	Null *bool `json:"null,omitempty"`
 }
 
+type SummaryPayload struct {
+	// Summary for project updates.
+	Summary string `json:"summary"`
+}
+
 type SynchronizedPayload struct {
 	// The identifier of the last sync operation.
 	LastSyncID float64 `json:"lastSyncId"`
@@ -7800,6 +8293,8 @@ type Team struct {
 	TriageIssueState *WorkflowState `json:"triageIssueState,omitempty"`
 	// Whether the team is private or not.
 	Private bool `json:"private"`
+	// Whether the team is managed by SCIM integration.
+	ScimManaged bool `json:"scimManaged"`
 	// The workflow state into which issues are moved when a PR has been opened as draft.
 	DraftWorkflowState *WorkflowState `json:"draftWorkflowState,omitempty"`
 	// The workflow state into which issues are moved when a PR has been opened.
@@ -8306,6 +8801,8 @@ type TeamUpdateInput struct {
 	MarkedAsDuplicateWorkflowStateID *string `json:"markedAsDuplicateWorkflowStateId,omitempty"`
 	// Whether new users should join this team by default. Mutation restricted to workspace admins!
 	JoinByDefault *bool `json:"joinByDefault,omitempty"`
+	// Whether the team is managed by SCIM integration. Mutation restricted to workspace admins and only unsetting is allowed!
+	ScimManaged *bool `json:"scimManaged,omitempty"`
 }
 
 // A template object used for creating entities faster.
@@ -8328,6 +8825,8 @@ type Template struct {
 	Description *string `json:"description,omitempty"`
 	// Template data.
 	TemplateData string `json:"templateData"`
+	// The sort order of the template.
+	SortOrder float64 `json:"sortOrder"`
 	// The organization that the template is associated with. If null, the template is associated with a particular team.
 	Organization *Organization `json:"organization,omitempty"`
 	// The team that the template is associated with. If null, the template is global to the workspace.
@@ -8362,6 +8861,8 @@ type TemplateCreateInput struct {
 	Description *string `json:"description,omitempty"`
 	// The template data as JSON encoded attributes of the type of entity, such as an issue.
 	TemplateData string `json:"templateData"`
+	// The position of the template in the templates list.
+	SortOrder *float64 `json:"sortOrder,omitempty"`
 }
 
 type TemplateEdge struct {
@@ -8388,6 +8889,8 @@ type TemplateUpdateInput struct {
 	TeamID *string `json:"teamId,omitempty"`
 	// The template data as JSON encoded attributes of the type of entity, such as an issue.
 	TemplateData *string `json:"templateData,omitempty"`
+	// The position of the template in the templates list.
+	SortOrder *float64 `json:"sortOrder,omitempty"`
 }
 
 // A time schedule.
@@ -9108,6 +9611,8 @@ type ViewPreferences struct {
 	Type string `json:"type"`
 	// The view type.
 	ViewType string `json:"viewType"`
+	// The view preferences
+	Preferences *ViewPreferencesValues `json:"preferences"`
 }
 
 func (ViewPreferences) IsNode() {}
@@ -9158,6 +9663,15 @@ type ViewPreferencesUpdateInput struct {
 	Preferences *string `json:"preferences,omitempty"`
 	// The default parameters for the insight on that view.
 	Insights *string `json:"insights,omitempty"`
+}
+
+type ViewPreferencesValues struct {
+	// The issue ordering.
+	ViewOrdering *string `json:"viewOrdering,omitempty"`
+	// The issue grouping.
+	IssueGrouping *string `json:"issueGrouping,omitempty"`
+	// Whether to show completed issues.
+	ShowCompletedIssues *string `json:"showCompletedIssues,omitempty"`
 }
 
 // A webhook used to send HTTP notifications over data updates.
@@ -9830,6 +10344,7 @@ const (
 	IntegrationServiceSlackProjectUpdatesPost    IntegrationService = "slackProjectUpdatesPost"
 	IntegrationServiceSentry                     IntegrationService = "sentry"
 	IntegrationServiceZendesk                    IntegrationService = "zendesk"
+	IntegrationServiceEmail                      IntegrationService = "email"
 )
 
 var AllIntegrationService = []IntegrationService{
@@ -9860,11 +10375,12 @@ var AllIntegrationService = []IntegrationService{
 	IntegrationServiceSlackProjectUpdatesPost,
 	IntegrationServiceSentry,
 	IntegrationServiceZendesk,
+	IntegrationServiceEmail,
 }
 
 func (e IntegrationService) IsValid() bool {
 	switch e {
-	case IntegrationServiceAirbyte, IntegrationServiceDiscord, IntegrationServiceFigma, IntegrationServiceFigmaPlugin, IntegrationServiceFront, IntegrationServiceGithub, IntegrationServiceGithubCommit, IntegrationServiceGithubPersonal, IntegrationServiceGitlab, IntegrationServiceGoogleCalendarPersonal, IntegrationServiceGoogleSheets, IntegrationServiceIntercom, IntegrationServiceJira, IntegrationServiceJiraPersonal, IntegrationServiceLoom, IntegrationServiceNotion, IntegrationServiceOpsgenie, IntegrationServicePagerDuty, IntegrationServiceSlack, IntegrationServiceSlackAsks, IntegrationServiceSlackOrgProjectUpdatesPost, IntegrationServiceSlackPersonal, IntegrationServiceSlackPost, IntegrationServiceSlackProjectPost, IntegrationServiceSlackProjectUpdatesPost, IntegrationServiceSentry, IntegrationServiceZendesk:
+	case IntegrationServiceAirbyte, IntegrationServiceDiscord, IntegrationServiceFigma, IntegrationServiceFigmaPlugin, IntegrationServiceFront, IntegrationServiceGithub, IntegrationServiceGithubCommit, IntegrationServiceGithubPersonal, IntegrationServiceGitlab, IntegrationServiceGoogleCalendarPersonal, IntegrationServiceGoogleSheets, IntegrationServiceIntercom, IntegrationServiceJira, IntegrationServiceJiraPersonal, IntegrationServiceLoom, IntegrationServiceNotion, IntegrationServiceOpsgenie, IntegrationServicePagerDuty, IntegrationServiceSlack, IntegrationServiceSlackAsks, IntegrationServiceSlackOrgProjectUpdatesPost, IntegrationServiceSlackPersonal, IntegrationServiceSlackPost, IntegrationServiceSlackProjectPost, IntegrationServiceSlackProjectUpdatesPost, IntegrationServiceSentry, IntegrationServiceZendesk, IntegrationServiceEmail:
 		return true
 	}
 	return false
@@ -10757,6 +11273,8 @@ const (
 	UserFlagTypeIssueMovePromptCompleted                 UserFlagType = "issueMovePromptCompleted"
 	UserFlagTypeMigrateThemePreference                   UserFlagType = "migrateThemePreference"
 	UserFlagTypeListSelectionTip                         UserFlagType = "listSelectionTip"
+	UserFlagTypeEmptyParagraphSlashCommandTip            UserFlagType = "emptyParagraphSlashCommandTip"
+	UserFlagTypeEditorSlashCommandUsed                   UserFlagType = "editorSlashCommandUsed"
 	UserFlagTypeCanPlaySnake                             UserFlagType = "canPlaySnake"
 	UserFlagTypeCanPlayTetris                            UserFlagType = "canPlayTetris"
 	UserFlagTypeImportBannerDismissed                    UserFlagType = "importBannerDismissed"
@@ -10801,6 +11319,8 @@ var AllUserFlagType = []UserFlagType{
 	UserFlagTypeIssueMovePromptCompleted,
 	UserFlagTypeMigrateThemePreference,
 	UserFlagTypeListSelectionTip,
+	UserFlagTypeEmptyParagraphSlashCommandTip,
+	UserFlagTypeEditorSlashCommandUsed,
 	UserFlagTypeCanPlaySnake,
 	UserFlagTypeCanPlayTetris,
 	UserFlagTypeImportBannerDismissed,
@@ -10824,7 +11344,7 @@ var AllUserFlagType = []UserFlagType{
 
 func (e UserFlagType) IsValid() bool {
 	switch e {
-	case UserFlagTypeUpdatedSlackThreadSyncIntegration, UserFlagTypeCompletedOnboarding, UserFlagTypeDesktopInstalled, UserFlagTypeTeamsPageIntroductionDismissed, UserFlagTypeJoinTeamIntroductionDismissed, UserFlagTypeDesktopDownloadToastDismissed, UserFlagTypeEmptyBacklogDismissed, UserFlagTypeEmptyCustomViewsDismissed, UserFlagTypeEmptyActiveIssuesDismissed, UserFlagTypeEmptyMyIssuesDismissed, UserFlagTypeTriageWelcomeDismissed, UserFlagTypeCycleWelcomeDismissed, UserFlagTypeProjectWelcomeDismissed, UserFlagTypeProjectBacklogWelcomeDismissed, UserFlagTypeProjectUpdatesWelcomeDismissed, UserFlagTypeAnalyticsWelcomeDismissed, UserFlagTypeInsightsWelcomeDismissed, UserFlagTypeInsightsHelpDismissed, UserFlagTypeFigmaPromptDismissed, UserFlagTypeIssueMovePromptCompleted, UserFlagTypeMigrateThemePreference, UserFlagTypeListSelectionTip, UserFlagTypeCanPlaySnake, UserFlagTypeCanPlayTetris, UserFlagTypeImportBannerDismissed, UserFlagTypeTryInvitePeopleDismissed, UserFlagTypeTryRoadmapsDismissed, UserFlagTypeTryCyclesDismissed, UserFlagTypeTryTriageDismissed, UserFlagTypeTryGithubDismissed, UserFlagTypeRewindBannerDismissed, UserFlagTypeHelpIslandFeatureInsightsDismissed, UserFlagTypeDueDateShortcutMigration, UserFlagTypeSlackCommentReactionTipShown, UserFlagTypeIssueLabelSuggestionUsed, UserFlagTypeThreadedCommentsNudgeIsSeen, UserFlagTypeDesktopTabsOnboardingDismissed, UserFlagTypeMilestoneOnboardingIsSeenAndDismissed, UserFlagTypeProjectBoardOnboardingIsSeenAndDismissed, UserFlagTypeFigmaPluginBannerDismissed, UserFlagTypeAll:
+	case UserFlagTypeUpdatedSlackThreadSyncIntegration, UserFlagTypeCompletedOnboarding, UserFlagTypeDesktopInstalled, UserFlagTypeTeamsPageIntroductionDismissed, UserFlagTypeJoinTeamIntroductionDismissed, UserFlagTypeDesktopDownloadToastDismissed, UserFlagTypeEmptyBacklogDismissed, UserFlagTypeEmptyCustomViewsDismissed, UserFlagTypeEmptyActiveIssuesDismissed, UserFlagTypeEmptyMyIssuesDismissed, UserFlagTypeTriageWelcomeDismissed, UserFlagTypeCycleWelcomeDismissed, UserFlagTypeProjectWelcomeDismissed, UserFlagTypeProjectBacklogWelcomeDismissed, UserFlagTypeProjectUpdatesWelcomeDismissed, UserFlagTypeAnalyticsWelcomeDismissed, UserFlagTypeInsightsWelcomeDismissed, UserFlagTypeInsightsHelpDismissed, UserFlagTypeFigmaPromptDismissed, UserFlagTypeIssueMovePromptCompleted, UserFlagTypeMigrateThemePreference, UserFlagTypeListSelectionTip, UserFlagTypeEmptyParagraphSlashCommandTip, UserFlagTypeEditorSlashCommandUsed, UserFlagTypeCanPlaySnake, UserFlagTypeCanPlayTetris, UserFlagTypeImportBannerDismissed, UserFlagTypeTryInvitePeopleDismissed, UserFlagTypeTryRoadmapsDismissed, UserFlagTypeTryCyclesDismissed, UserFlagTypeTryTriageDismissed, UserFlagTypeTryGithubDismissed, UserFlagTypeRewindBannerDismissed, UserFlagTypeHelpIslandFeatureInsightsDismissed, UserFlagTypeDueDateShortcutMigration, UserFlagTypeSlackCommentReactionTipShown, UserFlagTypeIssueLabelSuggestionUsed, UserFlagTypeThreadedCommentsNudgeIsSeen, UserFlagTypeDesktopTabsOnboardingDismissed, UserFlagTypeMilestoneOnboardingIsSeenAndDismissed, UserFlagTypeProjectBoardOnboardingIsSeenAndDismissed, UserFlagTypeFigmaPluginBannerDismissed, UserFlagTypeAll:
 		return true
 	}
 	return false
@@ -11024,6 +11544,7 @@ const (
 	ViewTypeArchive                  ViewType = "archive"
 	ViewTypeQuickView                ViewType = "quickView"
 	ViewTypeIssueIdentifiers         ViewType = "issueIdentifiers"
+	ViewTypeMyViews                  ViewType = "myViews"
 )
 
 var AllViewType = []ViewType{
@@ -11064,11 +11585,12 @@ var AllViewType = []ViewType{
 	ViewTypeArchive,
 	ViewTypeQuickView,
 	ViewTypeIssueIdentifiers,
+	ViewTypeMyViews,
 }
 
 func (e ViewType) IsValid() bool {
 	switch e {
-	case ViewTypeInbox, ViewTypeMyIssues, ViewTypeMyIssuesCreatedByMe, ViewTypeMyIssuesSubscribedTo, ViewTypeMyIssuesActivity, ViewTypeUserProfile, ViewTypeUserProfileCreatedByUser, ViewTypeBoard, ViewTypeCompletedCycle, ViewTypeCycle, ViewTypeProject, ViewTypeProjectDocuments, ViewTypeLabel, ViewTypeTriage, ViewTypeActiveIssues, ViewTypeBacklog, ViewTypeAllIssues, ViewTypeCustomView, ViewTypeCustomViews, ViewTypeCustomRoadmap, ViewTypeRoadmap, ViewTypeRoadmaps, ViewTypeRoadmapAll, ViewTypeRoadmapClosed, ViewTypeRoadmapBacklog, ViewTypeInitiative, ViewTypeInitiatives, ViewTypeProjects, ViewTypeProjectsAll, ViewTypeProjectsBacklog, ViewTypeProjectsClosed, ViewTypeSearch, ViewTypeSplitSearch, ViewTypeTeams, ViewTypeArchive, ViewTypeQuickView, ViewTypeIssueIdentifiers:
+	case ViewTypeInbox, ViewTypeMyIssues, ViewTypeMyIssuesCreatedByMe, ViewTypeMyIssuesSubscribedTo, ViewTypeMyIssuesActivity, ViewTypeUserProfile, ViewTypeUserProfileCreatedByUser, ViewTypeBoard, ViewTypeCompletedCycle, ViewTypeCycle, ViewTypeProject, ViewTypeProjectDocuments, ViewTypeLabel, ViewTypeTriage, ViewTypeActiveIssues, ViewTypeBacklog, ViewTypeAllIssues, ViewTypeCustomView, ViewTypeCustomViews, ViewTypeCustomRoadmap, ViewTypeRoadmap, ViewTypeRoadmaps, ViewTypeRoadmapAll, ViewTypeRoadmapClosed, ViewTypeRoadmapBacklog, ViewTypeInitiative, ViewTypeInitiatives, ViewTypeProjects, ViewTypeProjectsAll, ViewTypeProjectsBacklog, ViewTypeProjectsClosed, ViewTypeSearch, ViewTypeSplitSearch, ViewTypeTeams, ViewTypeArchive, ViewTypeQuickView, ViewTypeIssueIdentifiers, ViewTypeMyViews:
 		return true
 	}
 	return false

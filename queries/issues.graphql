@@ -1,15 +1,24 @@
-query GetIssues($filter: IssueFilter, $after: String, $first: Int = 50) {
-  issues(filter: $filter, after: $after, first: $first) {
+query GetIssues(
+  $sort: [IssueSortInput!]
+  $filter: IssueFilter
+  $after: String
+  $first: Int = 50
+) {
+  issues(sort: $sort, filter: $filter, after: $after, first: $first) {
     nodes {
       id
       identifier
       title
       priority
+      description
       team {
+        id
         name
         color
       }
       assignee {
+        id
+        email
         displayName
         isMe
       }
@@ -48,11 +57,15 @@ query SearchIssues($term: String!, $after: String, $first: Int = 50) {
       identifier
       title
       priority
+      description
       team {
+        id
         name
         color
       }
       assignee {
+        id
+        email
         displayName
         isMe
       }
@@ -83,11 +96,15 @@ mutation UpdateIssue($input: IssueUpdateInput!, $issueUpdateId: String!) {
       identifier
       title
       priority
+      description
       team {
+        id
         name
         color
       }
       assignee {
+        id
+        email
         displayName
         isMe
       }
@@ -118,11 +135,15 @@ mutation UnassignIssue($issueUpdateId: String!) {
       identifier
       title
       priority
+      description
       team {
+        id
         name
         color
       }
       assignee {
+        id
+        email
         displayName
         isMe
       }

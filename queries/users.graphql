@@ -4,6 +4,9 @@ query GetCurrentUser {
     email
     isMe
     displayName
+    organization {
+      name
+    }
   }
 }
 

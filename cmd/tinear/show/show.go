@@ -3,6 +3,7 @@ package show
 import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	linearClient "github.com/sayedmurtaza24/tinear/linear"
 	"github.com/sayedmurtaza24/tinear/pkg/common"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/views/dashboard"
 )
@@ -13,10 +14,10 @@ type model struct {
 	dashboard *dashboard.Model
 }
 
-func New(common *common.Model) *model {
+func New(common *common.Model, client linearClient.LinearClient) *model {
 	return &model{
 		common:    common,
-		dashboard: dashboard.New(common),
+		dashboard: dashboard.New(common, client),
 	}
 }
 
