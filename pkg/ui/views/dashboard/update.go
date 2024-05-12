@@ -4,8 +4,8 @@ import (
 	"log"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/resumable"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/user"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/resumable"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/user"
 )
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

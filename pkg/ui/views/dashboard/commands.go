@@ -6,11 +6,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	linearClient "github.com/sayedmurtaza24/tinear/linear"
 	"github.com/sayedmurtaza24/tinear/linear/models"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/issue"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/project"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/resumable"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/sort"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/user"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/issue"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/project"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/resumable"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/sort"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/user"
 )
 
 var first int64 = 50

@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	linearClient "github.com/sayedmurtaza24/tinear/linear"
 	"github.com/sayedmurtaza24/tinear/pkg/common"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/sort"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/sort"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/input"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/issue"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/status"

@@ -1,16 +1,17 @@
 package issue
 
 import (
+	"reflect"
 	"strings"
 
 	linearClient "github.com/sayedmurtaza24/tinear/linear"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/label"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/prio"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/project"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/state"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/team"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/user"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/color"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/label"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/prio"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/project"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/state"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/team"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/user"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/table"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/text"
 )
@@ -26,6 +27,10 @@ type Issue struct {
 	Team       team.Team
 	State      state.State
 	Project    project.Project
+}
+
+func (i *Issue) Equal(other Issue) bool {
+	return reflect.DeepEqual(*i, other)
 }
 
 func IssuesToRows(issues []Issue, focused bool) []*table.Row {

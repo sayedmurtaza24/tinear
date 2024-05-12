@@ -2,9 +2,9 @@ package dashboard
 
 import (
 	"github.com/charmbracelet/lipgloss"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/issue"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/color"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/layouts"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/linear/issue"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/table"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/text"
 )
