@@ -11,8 +11,7 @@ import (
 )
 
 type LinearClient interface {
-	GetIssues(ctx context.Context, sort []*models.IssueSortInput, filter *models.IssueFilter, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetIssues, error)
-	SearchIssues(ctx context.Context, term string, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*SearchIssues, error)
+	GetIssues(ctx context.Context, filter *models.IssueFilter, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetIssues, error)
 	UpdateIssue(ctx context.Context, input models.IssueUpdateInput, issueUpdateID string, interceptors ...clientv2.RequestInterceptor) (*UpdateIssue, error)
 	UnassignIssue(ctx context.Context, issueUpdateID string, interceptors ...clientv2.RequestInterceptor) (*UnassignIssue, error)
 	GetProjects(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetProjects, error)
@@ -168,6 +167,8 @@ type GetIssues_Issues_Nodes struct {
 	Project     *GetIssues_Issues_Nodes_Project  "json:\"project,omitempty\" graphql:\"project\""
 	State       GetIssues_Issues_Nodes_State     "json:\"state\" graphql:\"state\""
 	Labels      GetIssues_Issues_Nodes_Labels    "json:\"labels\" graphql:\"labels\""
+	UpdatedAt   string                           "json:\"updatedAt\" graphql:\"updatedAt\""
+	CreatedAt   string                           "json:\"createdAt\" graphql:\"createdAt\""
 }
 
 func (t *GetIssues_Issues_Nodes) GetID() string {
@@ -230,6 +231,18 @@ func (t *GetIssues_Issues_Nodes) GetLabels() *GetIssues_Issues_Nodes_Labels {
 	}
 	return &t.Labels
 }
+func (t *GetIssues_Issues_Nodes) GetUpdatedAt() string {
+	if t == nil {
+		t = &GetIssues_Issues_Nodes{}
+	}
+	return t.UpdatedAt
+}
+func (t *GetIssues_Issues_Nodes) GetCreatedAt() string {
+	if t == nil {
+		t = &GetIssues_Issues_Nodes{}
+	}
+	return t.CreatedAt
+}
 
 type GetIssues_Issues_PageInfo struct {
 	HasNextPage bool    "json:\"hasNextPage\" graphql:\"hasNextPage\""
@@ -267,458 +280,8 @@ func (t *GetIssues_Issues) GetPageInfo() *GetIssues_Issues_PageInfo {
 	return &t.PageInfo
 }
 
-type SearchIssues_SearchIssues_PageInfo struct {
-	HasNextPage bool    "json:\"hasNextPage\" graphql:\"hasNextPage\""
-	EndCursor   *string "json:\"endCursor,omitempty\" graphql:\"endCursor\""
-}
-
-func (t *SearchIssues_SearchIssues_PageInfo) GetHasNextPage() bool {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_PageInfo{}
-	}
-	return t.HasNextPage
-}
-func (t *SearchIssues_SearchIssues_PageInfo) GetEndCursor() *string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_PageInfo{}
-	}
-	return t.EndCursor
-}
-
-type SearchIssues_SearchIssues_Nodes_Team struct {
-	ID    string  "json:\"id\" graphql:\"id\""
-	Name  string  "json:\"name\" graphql:\"name\""
-	Color *string "json:\"color,omitempty\" graphql:\"color\""
-}
-
-func (t *SearchIssues_SearchIssues_Nodes_Team) GetID() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Team{}
-	}
-	return t.ID
-}
-func (t *SearchIssues_SearchIssues_Nodes_Team) GetName() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Team{}
-	}
-	return t.Name
-}
-func (t *SearchIssues_SearchIssues_Nodes_Team) GetColor() *string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Team{}
-	}
-	return t.Color
-}
-
-type SearchIssues_SearchIssues_Nodes_Assignee struct {
-	ID          string "json:\"id\" graphql:\"id\""
-	Email       string "json:\"email\" graphql:\"email\""
-	DisplayName string "json:\"displayName\" graphql:\"displayName\""
-	IsMe        bool   "json:\"isMe\" graphql:\"isMe\""
-}
-
-func (t *SearchIssues_SearchIssues_Nodes_Assignee) GetID() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Assignee{}
-	}
-	return t.ID
-}
-func (t *SearchIssues_SearchIssues_Nodes_Assignee) GetEmail() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Assignee{}
-	}
-	return t.Email
-}
-func (t *SearchIssues_SearchIssues_Nodes_Assignee) GetDisplayName() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Assignee{}
-	}
-	return t.DisplayName
-}
-func (t *SearchIssues_SearchIssues_Nodes_Assignee) GetIsMe() bool {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Assignee{}
-	}
-	return t.IsMe
-}
-
-type SearchIssues_SearchIssues_Nodes_Project struct {
-	Name  string "json:\"name\" graphql:\"name\""
-	Color string "json:\"color\" graphql:\"color\""
-}
-
-func (t *SearchIssues_SearchIssues_Nodes_Project) GetName() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Project{}
-	}
-	return t.Name
-}
-func (t *SearchIssues_SearchIssues_Nodes_Project) GetColor() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Project{}
-	}
-	return t.Color
-}
-
-type SearchIssues_SearchIssues_Nodes_State struct {
-	Name     string  "json:\"name\" graphql:\"name\""
-	Color    string  "json:\"color\" graphql:\"color\""
-	Position float64 "json:\"position\" graphql:\"position\""
-}
-
-func (t *SearchIssues_SearchIssues_Nodes_State) GetName() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_State{}
-	}
-	return t.Name
-}
-func (t *SearchIssues_SearchIssues_Nodes_State) GetColor() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_State{}
-	}
-	return t.Color
-}
-func (t *SearchIssues_SearchIssues_Nodes_State) GetPosition() float64 {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_State{}
-	}
-	return t.Position
-}
-
-type SearchIssues_SearchIssues_Nodes_Labels_Nodes struct {
-	Name  string "json:\"name\" graphql:\"name\""
-	Color string "json:\"color\" graphql:\"color\""
-}
-
-func (t *SearchIssues_SearchIssues_Nodes_Labels_Nodes) GetName() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Labels_Nodes{}
-	}
-	return t.Name
-}
-func (t *SearchIssues_SearchIssues_Nodes_Labels_Nodes) GetColor() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Labels_Nodes{}
-	}
-	return t.Color
-}
-
-type SearchIssues_SearchIssues_Nodes_Labels struct {
-	Nodes []*SearchIssues_SearchIssues_Nodes_Labels_Nodes "json:\"nodes\" graphql:\"nodes\""
-}
-
-func (t *SearchIssues_SearchIssues_Nodes_Labels) GetNodes() []*SearchIssues_SearchIssues_Nodes_Labels_Nodes {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes_Labels{}
-	}
-	return t.Nodes
-}
-
-type SearchIssues_SearchIssues_Nodes struct {
-	ID          string                                    "json:\"id\" graphql:\"id\""
-	Identifier  string                                    "json:\"identifier\" graphql:\"identifier\""
-	Title       string                                    "json:\"title\" graphql:\"title\""
-	Priority    float64                                   "json:\"priority\" graphql:\"priority\""
-	Description *string                                   "json:\"description,omitempty\" graphql:\"description\""
-	Team        SearchIssues_SearchIssues_Nodes_Team      "json:\"team\" graphql:\"team\""
-	Assignee    *SearchIssues_SearchIssues_Nodes_Assignee "json:\"assignee,omitempty\" graphql:\"assignee\""
-	Project     *SearchIssues_SearchIssues_Nodes_Project  "json:\"project,omitempty\" graphql:\"project\""
-	State       SearchIssues_SearchIssues_Nodes_State     "json:\"state\" graphql:\"state\""
-	Labels      SearchIssues_SearchIssues_Nodes_Labels    "json:\"labels\" graphql:\"labels\""
-}
-
-func (t *SearchIssues_SearchIssues_Nodes) GetID() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes{}
-	}
-	return t.ID
-}
-func (t *SearchIssues_SearchIssues_Nodes) GetIdentifier() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes{}
-	}
-	return t.Identifier
-}
-func (t *SearchIssues_SearchIssues_Nodes) GetTitle() string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes{}
-	}
-	return t.Title
-}
-func (t *SearchIssues_SearchIssues_Nodes) GetPriority() float64 {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes{}
-	}
-	return t.Priority
-}
-func (t *SearchIssues_SearchIssues_Nodes) GetDescription() *string {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes{}
-	}
-	return t.Description
-}
-func (t *SearchIssues_SearchIssues_Nodes) GetTeam() *SearchIssues_SearchIssues_Nodes_Team {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes{}
-	}
-	return &t.Team
-}
-func (t *SearchIssues_SearchIssues_Nodes) GetAssignee() *SearchIssues_SearchIssues_Nodes_Assignee {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes{}
-	}
-	return t.Assignee
-}
-func (t *SearchIssues_SearchIssues_Nodes) GetProject() *SearchIssues_SearchIssues_Nodes_Project {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes{}
-	}
-	return t.Project
-}
-func (t *SearchIssues_SearchIssues_Nodes) GetState() *SearchIssues_SearchIssues_Nodes_State {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes{}
-	}
-	return &t.State
-}
-func (t *SearchIssues_SearchIssues_Nodes) GetLabels() *SearchIssues_SearchIssues_Nodes_Labels {
-	if t == nil {
-		t = &SearchIssues_SearchIssues_Nodes{}
-	}
-	return &t.Labels
-}
-
-type SearchIssues_SearchIssues struct {
-	TotalCount float64                            "json:\"totalCount\" graphql:\"totalCount\""
-	PageInfo   SearchIssues_SearchIssues_PageInfo "json:\"pageInfo\" graphql:\"pageInfo\""
-	Nodes      []*SearchIssues_SearchIssues_Nodes "json:\"nodes\" graphql:\"nodes\""
-}
-
-func (t *SearchIssues_SearchIssues) GetTotalCount() float64 {
-	if t == nil {
-		t = &SearchIssues_SearchIssues{}
-	}
-	return t.TotalCount
-}
-func (t *SearchIssues_SearchIssues) GetPageInfo() *SearchIssues_SearchIssues_PageInfo {
-	if t == nil {
-		t = &SearchIssues_SearchIssues{}
-	}
-	return &t.PageInfo
-}
-func (t *SearchIssues_SearchIssues) GetNodes() []*SearchIssues_SearchIssues_Nodes {
-	if t == nil {
-		t = &SearchIssues_SearchIssues{}
-	}
-	return t.Nodes
-}
-
-type UpdateIssue_IssueUpdate_Issue_Team struct {
-	ID    string  "json:\"id\" graphql:\"id\""
-	Name  string  "json:\"name\" graphql:\"name\""
-	Color *string "json:\"color,omitempty\" graphql:\"color\""
-}
-
-func (t *UpdateIssue_IssueUpdate_Issue_Team) GetID() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Team{}
-	}
-	return t.ID
-}
-func (t *UpdateIssue_IssueUpdate_Issue_Team) GetName() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Team{}
-	}
-	return t.Name
-}
-func (t *UpdateIssue_IssueUpdate_Issue_Team) GetColor() *string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Team{}
-	}
-	return t.Color
-}
-
-type UpdateIssue_IssueUpdate_Issue_Assignee struct {
-	ID          string "json:\"id\" graphql:\"id\""
-	Email       string "json:\"email\" graphql:\"email\""
-	DisplayName string "json:\"displayName\" graphql:\"displayName\""
-	IsMe        bool   "json:\"isMe\" graphql:\"isMe\""
-}
-
-func (t *UpdateIssue_IssueUpdate_Issue_Assignee) GetID() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Assignee{}
-	}
-	return t.ID
-}
-func (t *UpdateIssue_IssueUpdate_Issue_Assignee) GetEmail() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Assignee{}
-	}
-	return t.Email
-}
-func (t *UpdateIssue_IssueUpdate_Issue_Assignee) GetDisplayName() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Assignee{}
-	}
-	return t.DisplayName
-}
-func (t *UpdateIssue_IssueUpdate_Issue_Assignee) GetIsMe() bool {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Assignee{}
-	}
-	return t.IsMe
-}
-
-type UpdateIssue_IssueUpdate_Issue_Project struct {
-	Name  string "json:\"name\" graphql:\"name\""
-	Color string "json:\"color\" graphql:\"color\""
-}
-
-func (t *UpdateIssue_IssueUpdate_Issue_Project) GetName() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Project{}
-	}
-	return t.Name
-}
-func (t *UpdateIssue_IssueUpdate_Issue_Project) GetColor() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Project{}
-	}
-	return t.Color
-}
-
-type UpdateIssue_IssueUpdate_Issue_State struct {
-	Name     string  "json:\"name\" graphql:\"name\""
-	Color    string  "json:\"color\" graphql:\"color\""
-	Position float64 "json:\"position\" graphql:\"position\""
-}
-
-func (t *UpdateIssue_IssueUpdate_Issue_State) GetName() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_State{}
-	}
-	return t.Name
-}
-func (t *UpdateIssue_IssueUpdate_Issue_State) GetColor() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_State{}
-	}
-	return t.Color
-}
-func (t *UpdateIssue_IssueUpdate_Issue_State) GetPosition() float64 {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_State{}
-	}
-	return t.Position
-}
-
-type UpdateIssue_IssueUpdate_Issue_Labels_Nodes struct {
-	Name  string "json:\"name\" graphql:\"name\""
-	Color string "json:\"color\" graphql:\"color\""
-}
-
-func (t *UpdateIssue_IssueUpdate_Issue_Labels_Nodes) GetName() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Labels_Nodes{}
-	}
-	return t.Name
-}
-func (t *UpdateIssue_IssueUpdate_Issue_Labels_Nodes) GetColor() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Labels_Nodes{}
-	}
-	return t.Color
-}
-
-type UpdateIssue_IssueUpdate_Issue_Labels struct {
-	Nodes []*UpdateIssue_IssueUpdate_Issue_Labels_Nodes "json:\"nodes\" graphql:\"nodes\""
-}
-
-func (t *UpdateIssue_IssueUpdate_Issue_Labels) GetNodes() []*UpdateIssue_IssueUpdate_Issue_Labels_Nodes {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue_Labels{}
-	}
-	return t.Nodes
-}
-
-type UpdateIssue_IssueUpdate_Issue struct {
-	ID          string                                  "json:\"id\" graphql:\"id\""
-	Identifier  string                                  "json:\"identifier\" graphql:\"identifier\""
-	Title       string                                  "json:\"title\" graphql:\"title\""
-	Priority    float64                                 "json:\"priority\" graphql:\"priority\""
-	Description *string                                 "json:\"description,omitempty\" graphql:\"description\""
-	Team        UpdateIssue_IssueUpdate_Issue_Team      "json:\"team\" graphql:\"team\""
-	Assignee    *UpdateIssue_IssueUpdate_Issue_Assignee "json:\"assignee,omitempty\" graphql:\"assignee\""
-	Project     *UpdateIssue_IssueUpdate_Issue_Project  "json:\"project,omitempty\" graphql:\"project\""
-	State       UpdateIssue_IssueUpdate_Issue_State     "json:\"state\" graphql:\"state\""
-	Labels      UpdateIssue_IssueUpdate_Issue_Labels    "json:\"labels\" graphql:\"labels\""
-}
-
-func (t *UpdateIssue_IssueUpdate_Issue) GetID() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue{}
-	}
-	return t.ID
-}
-func (t *UpdateIssue_IssueUpdate_Issue) GetIdentifier() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue{}
-	}
-	return t.Identifier
-}
-func (t *UpdateIssue_IssueUpdate_Issue) GetTitle() string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue{}
-	}
-	return t.Title
-}
-func (t *UpdateIssue_IssueUpdate_Issue) GetPriority() float64 {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue{}
-	}
-	return t.Priority
-}
-func (t *UpdateIssue_IssueUpdate_Issue) GetDescription() *string {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue{}
-	}
-	return t.Description
-}
-func (t *UpdateIssue_IssueUpdate_Issue) GetTeam() *UpdateIssue_IssueUpdate_Issue_Team {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue{}
-	}
-	return &t.Team
-}
-func (t *UpdateIssue_IssueUpdate_Issue) GetAssignee() *UpdateIssue_IssueUpdate_Issue_Assignee {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue{}
-	}
-	return t.Assignee
-}
-func (t *UpdateIssue_IssueUpdate_Issue) GetProject() *UpdateIssue_IssueUpdate_Issue_Project {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue{}
-	}
-	return t.Project
-}
-func (t *UpdateIssue_IssueUpdate_Issue) GetState() *UpdateIssue_IssueUpdate_Issue_State {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue{}
-	}
-	return &t.State
-}
-func (t *UpdateIssue_IssueUpdate_Issue) GetLabels() *UpdateIssue_IssueUpdate_Issue_Labels {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate_Issue{}
-	}
-	return &t.Labels
-}
-
 type UpdateIssue_IssueUpdate struct {
-	Success bool                           "json:\"success\" graphql:\"success\""
-	Issue   *UpdateIssue_IssueUpdate_Issue "json:\"issue,omitempty\" graphql:\"issue\""
+	Success bool "json:\"success\" graphql:\"success\""
 }
 
 func (t *UpdateIssue_IssueUpdate) GetSuccess() bool {
@@ -727,219 +290,9 @@ func (t *UpdateIssue_IssueUpdate) GetSuccess() bool {
 	}
 	return t.Success
 }
-func (t *UpdateIssue_IssueUpdate) GetIssue() *UpdateIssue_IssueUpdate_Issue {
-	if t == nil {
-		t = &UpdateIssue_IssueUpdate{}
-	}
-	return t.Issue
-}
-
-type UnassignIssue_IssueUpdate_Issue_Team struct {
-	ID    string  "json:\"id\" graphql:\"id\""
-	Name  string  "json:\"name\" graphql:\"name\""
-	Color *string "json:\"color,omitempty\" graphql:\"color\""
-}
-
-func (t *UnassignIssue_IssueUpdate_Issue_Team) GetID() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Team{}
-	}
-	return t.ID
-}
-func (t *UnassignIssue_IssueUpdate_Issue_Team) GetName() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Team{}
-	}
-	return t.Name
-}
-func (t *UnassignIssue_IssueUpdate_Issue_Team) GetColor() *string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Team{}
-	}
-	return t.Color
-}
-
-type UnassignIssue_IssueUpdate_Issue_Assignee struct {
-	ID          string "json:\"id\" graphql:\"id\""
-	Email       string "json:\"email\" graphql:\"email\""
-	DisplayName string "json:\"displayName\" graphql:\"displayName\""
-	IsMe        bool   "json:\"isMe\" graphql:\"isMe\""
-}
-
-func (t *UnassignIssue_IssueUpdate_Issue_Assignee) GetID() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Assignee{}
-	}
-	return t.ID
-}
-func (t *UnassignIssue_IssueUpdate_Issue_Assignee) GetEmail() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Assignee{}
-	}
-	return t.Email
-}
-func (t *UnassignIssue_IssueUpdate_Issue_Assignee) GetDisplayName() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Assignee{}
-	}
-	return t.DisplayName
-}
-func (t *UnassignIssue_IssueUpdate_Issue_Assignee) GetIsMe() bool {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Assignee{}
-	}
-	return t.IsMe
-}
-
-type UnassignIssue_IssueUpdate_Issue_Project struct {
-	Name  string "json:\"name\" graphql:\"name\""
-	Color string "json:\"color\" graphql:\"color\""
-}
-
-func (t *UnassignIssue_IssueUpdate_Issue_Project) GetName() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Project{}
-	}
-	return t.Name
-}
-func (t *UnassignIssue_IssueUpdate_Issue_Project) GetColor() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Project{}
-	}
-	return t.Color
-}
-
-type UnassignIssue_IssueUpdate_Issue_State struct {
-	Name     string  "json:\"name\" graphql:\"name\""
-	Color    string  "json:\"color\" graphql:\"color\""
-	Position float64 "json:\"position\" graphql:\"position\""
-}
-
-func (t *UnassignIssue_IssueUpdate_Issue_State) GetName() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_State{}
-	}
-	return t.Name
-}
-func (t *UnassignIssue_IssueUpdate_Issue_State) GetColor() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_State{}
-	}
-	return t.Color
-}
-func (t *UnassignIssue_IssueUpdate_Issue_State) GetPosition() float64 {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_State{}
-	}
-	return t.Position
-}
-
-type UnassignIssue_IssueUpdate_Issue_Labels_Nodes struct {
-	Name  string "json:\"name\" graphql:\"name\""
-	Color string "json:\"color\" graphql:\"color\""
-}
-
-func (t *UnassignIssue_IssueUpdate_Issue_Labels_Nodes) GetName() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Labels_Nodes{}
-	}
-	return t.Name
-}
-func (t *UnassignIssue_IssueUpdate_Issue_Labels_Nodes) GetColor() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Labels_Nodes{}
-	}
-	return t.Color
-}
-
-type UnassignIssue_IssueUpdate_Issue_Labels struct {
-	Nodes []*UnassignIssue_IssueUpdate_Issue_Labels_Nodes "json:\"nodes\" graphql:\"nodes\""
-}
-
-func (t *UnassignIssue_IssueUpdate_Issue_Labels) GetNodes() []*UnassignIssue_IssueUpdate_Issue_Labels_Nodes {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue_Labels{}
-	}
-	return t.Nodes
-}
-
-type UnassignIssue_IssueUpdate_Issue struct {
-	ID          string                                    "json:\"id\" graphql:\"id\""
-	Identifier  string                                    "json:\"identifier\" graphql:\"identifier\""
-	Title       string                                    "json:\"title\" graphql:\"title\""
-	Priority    float64                                   "json:\"priority\" graphql:\"priority\""
-	Description *string                                   "json:\"description,omitempty\" graphql:\"description\""
-	Team        UnassignIssue_IssueUpdate_Issue_Team      "json:\"team\" graphql:\"team\""
-	Assignee    *UnassignIssue_IssueUpdate_Issue_Assignee "json:\"assignee,omitempty\" graphql:\"assignee\""
-	Project     *UnassignIssue_IssueUpdate_Issue_Project  "json:\"project,omitempty\" graphql:\"project\""
-	State       UnassignIssue_IssueUpdate_Issue_State     "json:\"state\" graphql:\"state\""
-	Labels      UnassignIssue_IssueUpdate_Issue_Labels    "json:\"labels\" graphql:\"labels\""
-}
-
-func (t *UnassignIssue_IssueUpdate_Issue) GetID() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue{}
-	}
-	return t.ID
-}
-func (t *UnassignIssue_IssueUpdate_Issue) GetIdentifier() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue{}
-	}
-	return t.Identifier
-}
-func (t *UnassignIssue_IssueUpdate_Issue) GetTitle() string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue{}
-	}
-	return t.Title
-}
-func (t *UnassignIssue_IssueUpdate_Issue) GetPriority() float64 {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue{}
-	}
-	return t.Priority
-}
-func (t *UnassignIssue_IssueUpdate_Issue) GetDescription() *string {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue{}
-	}
-	return t.Description
-}
-func (t *UnassignIssue_IssueUpdate_Issue) GetTeam() *UnassignIssue_IssueUpdate_Issue_Team {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue{}
-	}
-	return &t.Team
-}
-func (t *UnassignIssue_IssueUpdate_Issue) GetAssignee() *UnassignIssue_IssueUpdate_Issue_Assignee {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue{}
-	}
-	return t.Assignee
-}
-func (t *UnassignIssue_IssueUpdate_Issue) GetProject() *UnassignIssue_IssueUpdate_Issue_Project {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue{}
-	}
-	return t.Project
-}
-func (t *UnassignIssue_IssueUpdate_Issue) GetState() *UnassignIssue_IssueUpdate_Issue_State {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue{}
-	}
-	return &t.State
-}
-func (t *UnassignIssue_IssueUpdate_Issue) GetLabels() *UnassignIssue_IssueUpdate_Issue_Labels {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate_Issue{}
-	}
-	return &t.Labels
-}
 
 type UnassignIssue_IssueUpdate struct {
-	Success bool                             "json:\"success\" graphql:\"success\""
-	Issue   *UnassignIssue_IssueUpdate_Issue "json:\"issue,omitempty\" graphql:\"issue\""
+	Success bool "json:\"success\" graphql:\"success\""
 }
 
 func (t *UnassignIssue_IssueUpdate) GetSuccess() bool {
@@ -947,12 +300,6 @@ func (t *UnassignIssue_IssueUpdate) GetSuccess() bool {
 		t = &UnassignIssue_IssueUpdate{}
 	}
 	return t.Success
-}
-func (t *UnassignIssue_IssueUpdate) GetIssue() *UnassignIssue_IssueUpdate_Issue {
-	if t == nil {
-		t = &UnassignIssue_IssueUpdate{}
-	}
-	return t.Issue
 }
 
 type GetProjects_Projects_Nodes_Lead struct {
@@ -1091,10 +438,23 @@ func (t *GetCurrentUser_Viewer) GetOrganization() *GetCurrentUser_Viewer_Organiz
 	return &t.Organization
 }
 
+type GetAllUsers_Users_Nodes_Organization struct {
+	Name string "json:\"name\" graphql:\"name\""
+}
+
+func (t *GetAllUsers_Users_Nodes_Organization) GetName() string {
+	if t == nil {
+		t = &GetAllUsers_Users_Nodes_Organization{}
+	}
+	return t.Name
+}
+
 type GetAllUsers_Users_Nodes struct {
-	ID          string "json:\"id\" graphql:\"id\""
-	DisplayName string "json:\"displayName\" graphql:\"displayName\""
-	IsMe        bool   "json:\"isMe\" graphql:\"isMe\""
+	ID           string                               "json:\"id\" graphql:\"id\""
+	Email        string                               "json:\"email\" graphql:\"email\""
+	DisplayName  string                               "json:\"displayName\" graphql:\"displayName\""
+	IsMe         bool                                 "json:\"isMe\" graphql:\"isMe\""
+	Organization GetAllUsers_Users_Nodes_Organization "json:\"organization\" graphql:\"organization\""
 }
 
 func (t *GetAllUsers_Users_Nodes) GetID() string {
@@ -1102,6 +462,12 @@ func (t *GetAllUsers_Users_Nodes) GetID() string {
 		t = &GetAllUsers_Users_Nodes{}
 	}
 	return t.ID
+}
+func (t *GetAllUsers_Users_Nodes) GetEmail() string {
+	if t == nil {
+		t = &GetAllUsers_Users_Nodes{}
+	}
+	return t.Email
 }
 func (t *GetAllUsers_Users_Nodes) GetDisplayName() string {
 	if t == nil {
@@ -1114,6 +480,12 @@ func (t *GetAllUsers_Users_Nodes) GetIsMe() bool {
 		t = &GetAllUsers_Users_Nodes{}
 	}
 	return t.IsMe
+}
+func (t *GetAllUsers_Users_Nodes) GetOrganization() *GetAllUsers_Users_Nodes_Organization {
+	if t == nil {
+		t = &GetAllUsers_Users_Nodes{}
+	}
+	return &t.Organization
 }
 
 type GetAllUsers_Users_PageInfo struct {
@@ -1161,17 +533,6 @@ func (t *GetIssues) GetIssues() *GetIssues_Issues {
 		t = &GetIssues{}
 	}
 	return &t.Issues
-}
-
-type SearchIssues struct {
-	SearchIssues SearchIssues_SearchIssues "json:\"searchIssues\" graphql:\"searchIssues\""
-}
-
-func (t *SearchIssues) GetSearchIssues() *SearchIssues_SearchIssues {
-	if t == nil {
-		t = &SearchIssues{}
-	}
-	return &t.SearchIssues
 }
 
 type UpdateIssue struct {
@@ -1229,8 +590,8 @@ func (t *GetAllUsers) GetUsers() *GetAllUsers_Users {
 	return &t.Users
 }
 
-const GetIssuesDocument = `query GetIssues ($sort: [IssueSortInput!], $filter: IssueFilter, $after: String, $first: Int = 50) {
-	issues(sort: $sort, filter: $filter, after: $after, first: $first) {
+const GetIssuesDocument = `query GetIssues ($filter: IssueFilter, $after: String, $first: Int = 50) {
+	issues(filter: $filter, after: $after, first: $first) {
 		nodes {
 			id
 			identifier
@@ -1263,6 +624,8 @@ const GetIssuesDocument = `query GetIssues ($sort: [IssueSortInput!], $filter: I
 					color
 				}
 			}
+			updatedAt
+			createdAt
 		}
 		pageInfo {
 			hasNextPage
@@ -1272,9 +635,8 @@ const GetIssuesDocument = `query GetIssues ($sort: [IssueSortInput!], $filter: I
 }
 `
 
-func (c *Client) GetIssues(ctx context.Context, sort []*models.IssueSortInput, filter *models.IssueFilter, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetIssues, error) {
+func (c *Client) GetIssues(ctx context.Context, filter *models.IssueFilter, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetIssues, error) {
 	vars := map[string]interface{}{
-		"sort":   sort,
 		"filter": filter,
 		"after":  after,
 		"first":  first,
@@ -1292,105 +654,9 @@ func (c *Client) GetIssues(ctx context.Context, sort []*models.IssueSortInput, f
 	return &res, nil
 }
 
-const SearchIssuesDocument = `query SearchIssues ($term: String!, $after: String, $first: Int = 50) {
-	searchIssues(term: $term, after: $after, first: $first) {
-		totalCount
-		pageInfo {
-			hasNextPage
-			endCursor
-		}
-		nodes {
-			id
-			identifier
-			title
-			priority
-			description
-			team {
-				id
-				name
-				color
-			}
-			assignee {
-				id
-				email
-				displayName
-				isMe
-			}
-			project {
-				name
-				color
-			}
-			state {
-				name
-				color
-				position
-			}
-			labels {
-				nodes {
-					name
-					color
-				}
-			}
-		}
-	}
-}
-`
-
-func (c *Client) SearchIssues(ctx context.Context, term string, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*SearchIssues, error) {
-	vars := map[string]interface{}{
-		"term":  term,
-		"after": after,
-		"first": first,
-	}
-
-	var res SearchIssues
-	if err := c.Client.Post(ctx, "SearchIssues", SearchIssuesDocument, &res, vars, interceptors...); err != nil {
-		if c.Client.ParseDataWhenErrors {
-			return &res, err
-		}
-
-		return nil, err
-	}
-
-	return &res, nil
-}
-
 const UpdateIssueDocument = `mutation UpdateIssue ($input: IssueUpdateInput!, $issueUpdateId: String!) {
 	issueUpdate(input: $input, id: $issueUpdateId) {
 		success
-		issue {
-			id
-			identifier
-			title
-			priority
-			description
-			team {
-				id
-				name
-				color
-			}
-			assignee {
-				id
-				email
-				displayName
-				isMe
-			}
-			project {
-				name
-				color
-			}
-			state {
-				name
-				color
-				position
-			}
-			labels {
-				nodes {
-					name
-					color
-				}
-			}
-		}
 	}
 }
 `
@@ -1416,39 +682,6 @@ func (c *Client) UpdateIssue(ctx context.Context, input models.IssueUpdateInput,
 const UnassignIssueDocument = `mutation UnassignIssue ($issueUpdateId: String!) {
 	issueUpdate(input: {assigneeId:null}, id: $issueUpdateId) {
 		success
-		issue {
-			id
-			identifier
-			title
-			priority
-			description
-			team {
-				id
-				name
-				color
-			}
-			assignee {
-				id
-				email
-				displayName
-				isMe
-			}
-			project {
-				name
-				color
-			}
-			state {
-				name
-				color
-				position
-			}
-			labels {
-				nodes {
-					name
-					color
-				}
-			}
-		}
 	}
 }
 `
@@ -1539,8 +772,12 @@ const GetAllUsersDocument = `query GetAllUsers ($after: String, $first: Int = 50
 	users(after: $after, first: $first) {
 		nodes {
 			id
+			email
 			displayName
 			isMe
+			organization {
+				name
+			}
 		}
 		pageInfo {
 			hasNextPage
@@ -1570,7 +807,6 @@ func (c *Client) GetAllUsers(ctx context.Context, after *string, first *int64, i
 
 var DocumentOperationNames = map[string]string{
 	GetIssuesDocument:      "GetIssues",
-	SearchIssuesDocument:   "SearchIssues",
 	UpdateIssueDocument:    "UpdateIssue",
 	UnassignIssueDocument:  "UnassignIssue",
 	GetProjectsDocument:    "GetProjects",

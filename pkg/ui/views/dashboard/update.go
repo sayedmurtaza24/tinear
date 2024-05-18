@@ -1,11 +1,8 @@
 package dashboard
 
 import (
-	"log"
-
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/sayedmurtaza24/tinear/pkg/linear/resumable"
-	"github.com/sayedmurtaza24/tinear/pkg/linear/user"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/command"
 )
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -16,20 +13,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case error:
 		return m, tea.Quit
 
-	case GetMeResponse:
-		m.state.Me = user.User(msg.User)
-		m.state.OrganizationName = msg.OrganizationName
+	case command.GetMeRes:
+		m.state.Me = msg.Result
 
-	case resumable.Command[GetMyIssuesResponse]:
-		log.Println("GetMyIssuesResponse")
+	case command.GetIssuesRes:
 		m.table.SetLoading(false)
 
-		m.state.MyIssues = append(m.state.MyIssues, msg.Result...)
+		m.state.Issues = append(m.state.Issues, msg.Result...)
 		if msg.After != nil {
-			cmds = append(cmds, GetMyIssues(m.client, m.issuesSortOption, msg.After))
+			cmds = append(cmds, command.GetIssues(m.client, m.store.ShouldReset(), msg.After))
+		} else {
+			if err := m.store.PutDiff(m.state.Issues...); err != nil {
+				return m, tea.Quit
+			}
 		}
 
-		m.renderTableRows(m.state.MyIssues)
+		m.renderTableRows(m.state.Issues)
 
 	case tea.WindowSizeMsg:
 		m.table.SetWidth(msg.Width)

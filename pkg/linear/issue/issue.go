@@ -3,6 +3,7 @@ package issue
 import (
 	"reflect"
 	"strings"
+	"time"
 
 	linearClient "github.com/sayedmurtaza24/tinear/linear"
 	"github.com/sayedmurtaza24/tinear/pkg/linear/label"
@@ -27,6 +28,8 @@ type Issue struct {
 	Team       team.Team
 	State      state.State
 	Project    project.Project
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 func (i *Issue) Equal(other Issue) bool {
@@ -145,6 +148,16 @@ func FromLinearClientGetIssues(resp linearClient.GetIssues) []Issue {
 			})
 		}
 
+		createdAt, err := time.Parse(time.RFC3339, iss.CreatedAt)
+		if err != nil {
+			panic(err)
+		}
+
+		updatedAt, err := time.Parse(time.RFC3339, iss.UpdatedAt)
+		if err != nil {
+			panic(err)
+		}
+
 		is := Issue{
 			ID:         iss.ID,
 			Identifier: iss.Identifier,
@@ -172,6 +185,8 @@ func FromLinearClientGetIssues(resp linearClient.GetIssues) []Issue {
 				Name:  iss.GetProject().GetName(),
 				Color: iss.GetProject().GetColor(),
 			},
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
 		}
 
 		issues = append(issues, is)

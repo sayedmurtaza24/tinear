@@ -1,10 +1,5 @@
-query GetIssues(
-  $sort: [IssueSortInput!]
-  $filter: IssueFilter
-  $after: String
-  $first: Int = 50
-) {
-  issues(sort: $sort, filter: $filter, after: $after, first: $first) {
+query GetIssues($filter: IssueFilter, $after: String, $first: Int = 50) {
+  issues(filter: $filter, after: $after, first: $first) {
     nodes {
       id
       identifier
@@ -37,53 +32,12 @@ query GetIssues(
           color
         }
       }
+      updatedAt
+      createdAt
     }
     pageInfo {
       hasNextPage
       endCursor
-    }
-  }
-}
-
-query SearchIssues($term: String!, $after: String, $first: Int = 50) {
-  searchIssues(term: $term, after: $after, first: $first) {
-    totalCount
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
-    nodes {
-      id
-      identifier
-      title
-      priority
-      description
-      team {
-        id
-        name
-        color
-      }
-      assignee {
-        id
-        email
-        displayName
-        isMe
-      }
-      project {
-        name
-        color
-      }
-      state {
-        name
-        color
-        position
-      }
-      labels {
-        nodes {
-          name
-          color
-        }
-      }
     }
   }
 }
@@ -91,77 +45,11 @@ query SearchIssues($term: String!, $after: String, $first: Int = 50) {
 mutation UpdateIssue($input: IssueUpdateInput!, $issueUpdateId: String!) {
   issueUpdate(input: $input, id: $issueUpdateId) {
     success
-    issue {
-      id
-      identifier
-      title
-      priority
-      description
-      team {
-        id
-        name
-        color
-      }
-      assignee {
-        id
-        email
-        displayName
-        isMe
-      }
-      project {
-        name
-        color
-      }
-      state {
-        name
-        color
-        position
-      }
-      labels {
-        nodes {
-          name
-          color
-        }
-      }
-    }
   }
 }
 
 mutation UnassignIssue($issueUpdateId: String!) {
   issueUpdate(input: { assigneeId: null }, id: $issueUpdateId) {
     success
-    issue {
-      id
-      identifier
-      title
-      priority
-      description
-      team {
-        id
-        name
-        color
-      }
-      assignee {
-        id
-        email
-        displayName
-        isMe
-      }
-      project {
-        name
-        color
-      }
-      state {
-        name
-        color
-        position
-      }
-      labels {
-        nodes {
-          name
-          color
-        }
-      }
-    }
   }
 }

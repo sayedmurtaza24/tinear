@@ -61,7 +61,7 @@ func (m *Model) renderTopBar() string {
 	)
 
 	org := text.Colored(
-		m.state.OrganizationName,
+		m.state.Me.OrgName,
 		color.Simple("#445f70"),
 	)
 

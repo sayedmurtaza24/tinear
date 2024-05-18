@@ -7,7 +7,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	linearClient "github.com/sayedmurtaza24/tinear/linear"
 	"github.com/sayedmurtaza24/tinear/pkg/common"
+	"github.com/sayedmurtaza24/tinear/pkg/linear/command"
 	"github.com/sayedmurtaza24/tinear/pkg/linear/sort"
+	"github.com/sayedmurtaza24/tinear/pkg/storage"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/input"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/issue"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/status"
@@ -17,16 +19,20 @@ import (
 type Model struct {
 	state DashboardState
 
+	store storage.IssueStore
+
 	client linearClient.LinearClient
 
-	issuesSortOption sort.SortOption
-	common           *common.Model
-	status           *status.Model
-	loadingStatus    *status.Status
-	input            *input.Model
-	loadingSpinner   spinner.Model
-	table            table.Model
-	issue            *issue.Model
+	sortOption sort.SortOption
+
+	loadingStatus *status.Status
+
+	common  *common.Model
+	status  *status.Model
+	input   *input.Model
+	spinner spinner.Model
+	table   table.Model
+	issue   *issue.Model
 }
 
 func New(common *common.Model, client linearClient.LinearClient) *Model {
@@ -44,9 +50,9 @@ func New(common *common.Model, client linearClient.LinearClient) *Model {
 		BorderBottom(true)
 
 	t := table.New(
+		table.WithFocused(true),
 		table.WithSpinner(spinner.Dot),
 		table.WithLoadingText("loading..."),
-		table.WithFocused(true),
 		table.WithVisualMode(true),
 		table.WithStyles(st),
 	)
@@ -63,8 +69,8 @@ func (m *Model) Init() tea.Cmd {
 
 	return tea.Batch(
 		m.table.SetLoading(true),
-		GetMe(m.client),
-		GetMyIssues(m.client, m.issuesSortOption, nil),
+		command.GetMe(m.client),
+		command.GetIssues(m.client, m.store.ShouldReset(), nil),
 	)
 }
 

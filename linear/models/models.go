@@ -555,9 +555,13 @@ type AuthOauthClient struct {
 	CreatorID string `json:"creatorId"`
 	// The ID of the workspace the OAuth application belongs to.
 	OrganizationID string `json:"organizationId"`
+	// The resource types to request when creating new webhooks.
+	WebhookResourceTypes []string `json:"webhookResourceTypes"`
 	// Webhook URL
 	WebhookURL *string `json:"webhookUrl,omitempty"`
-	ArchivedAt *string `json:"archivedAt,omitempty"`
+	// Webhook secret
+	WebhookSecret *string `json:"webhookSecret,omitempty"`
+	ArchivedAt    *string `json:"archivedAt,omitempty"`
 }
 
 // AuthOauthClient with token creator IDs and counts (memberships), for use in the GraphQL API.
@@ -3117,6 +3121,103 @@ type InitiativeFilter struct {
 	Or []*InitiativeFilter `json:"or,omitempty"`
 }
 
+// An initiative related notification.
+type InitiativeNotification struct {
+	// The unique identifier of the entity.
+	ID string `json:"id"`
+	// The time at which the entity was created.
+	CreatedAt string `json:"createdAt"`
+	// The last time at which the entity was meaningfully updated, i.e. for all changes of syncable properties except those
+	//     for which updates should not produce an update to updatedAt (see skipUpdatedAtKeys). This is the same as the creation time if the entity hasn't
+	//     been updated after creation.
+	UpdatedAt string `json:"updatedAt"`
+	// The time at which the entity was archived. Null if the entity has not been archived.
+	ArchivedAt *string `json:"archivedAt,omitempty"`
+	// Notification type.
+	Type string `json:"type"`
+	// The user that caused the notification.
+	Actor *User `json:"actor,omitempty"`
+	// The external user that caused the notification.
+	ExternalUserActor *ExternalUser `json:"externalUserActor,omitempty"`
+	// The user that received the notification.
+	User *User `json:"user"`
+	// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
+	ReadAt *string `json:"readAt,omitempty"`
+	// The time at when an email reminder for this notification was sent to the user. Null, if no email
+	//     reminder has been sent.
+	EmailedAt *string `json:"emailedAt,omitempty"`
+	// The time until a notification will be snoozed. After that it will appear in the inbox again.
+	SnoozedUntilAt *string `json:"snoozedUntilAt,omitempty"`
+	// The time at which a notification was unsnoozed..
+	UnsnoozedAt *string `json:"unsnoozedAt,omitempty"`
+	// The bot that caused the notification.
+	BotActor *ActorBot `json:"botActor,omitempty"`
+}
+
+func (InitiativeNotification) IsEntity() {}
+
+// The unique identifier of the entity.
+func (this InitiativeNotification) GetID() string { return this.ID }
+
+// The time at which the entity was created.
+func (this InitiativeNotification) GetCreatedAt() string { return this.CreatedAt }
+
+// The last time at which the entity was meaningfully updated, i.e. for all changes of syncable properties except those
+//
+//	for which updates should not produce an update to updatedAt (see skipUpdatedAtKeys). This is the same as the creation time if the entity hasn't
+//	been updated after creation.
+func (this InitiativeNotification) GetUpdatedAt() string { return this.UpdatedAt }
+
+// The time at which the entity was archived. Null if the entity has not been archived.
+func (this InitiativeNotification) GetArchivedAt() *string { return this.ArchivedAt }
+
+func (InitiativeNotification) IsNode() {}
+
+// The unique identifier of the entity.
+
+func (InitiativeNotification) IsNotification() {}
+
+// The unique identifier of the entity.
+
+// The time at which the entity was created.
+
+// The last time at which the entity was meaningfully updated, i.e. for all changes of syncable properties except those
+//     for which updates should not produce an update to updatedAt (see skipUpdatedAtKeys). This is the same as the creation time if the entity hasn't
+//     been updated after creation.
+
+// The time at which the entity was archived. Null if the entity has not been archived.
+
+// Notification type.
+func (this InitiativeNotification) GetType() string { return this.Type }
+
+// The user that caused the notification.
+func (this InitiativeNotification) GetActor() *User { return this.Actor }
+
+// The external user that caused the notification.
+func (this InitiativeNotification) GetExternalUserActor() *ExternalUser {
+	return this.ExternalUserActor
+}
+
+// The user that received the notification.
+func (this InitiativeNotification) GetUser() *User { return this.User }
+
+// The time at when the user marked the notification as read. Null, if the the user hasn't read the notification
+func (this InitiativeNotification) GetReadAt() *string { return this.ReadAt }
+
+// The time at when an email reminder for this notification was sent to the user. Null, if no email
+//
+//	reminder has been sent.
+func (this InitiativeNotification) GetEmailedAt() *string { return this.EmailedAt }
+
+// The time until a notification will be snoozed. After that it will appear in the inbox again.
+func (this InitiativeNotification) GetSnoozedUntilAt() *string { return this.SnoozedUntilAt }
+
+// The time at which a notification was unsnoozed..
+func (this InitiativeNotification) GetUnsnoozedAt() *string { return this.UnsnoozedAt }
+
+// The bot that caused the notification.
+func (this InitiativeNotification) GetBotActor() *ActorBot { return this.BotActor }
+
 // [Internal] The payload returned by the initiative mutations.
 type InitiativePayload struct {
 	// The identifier of the last sync operation.
@@ -4825,6 +4926,8 @@ type JiraSettings struct {
 	Projects []*JiraProjectData `json:"projects"`
 	// Whether this integration is for Jira Server or not.
 	IsJiraServer *bool `json:"isJiraServer,omitempty"`
+	// Whether the user needs to provide setup information about the webhook to complete the integration setup.
+	NeedsManualSetup *bool `json:"needsManualSetup,omitempty"`
 }
 
 type JiraSettingsInput struct {
@@ -4834,6 +4937,8 @@ type JiraSettingsInput struct {
 	Projects []*JiraProjectDataInput `json:"projects"`
 	// Whether this integration is for Jira Server or not.
 	IsJiraServer *bool `json:"isJiraServer,omitempty"`
+	// Whether the user needs to provide setup information about the webhook to complete the integration setup.
+	NeedsManualSetup *bool `json:"needsManualSetup,omitempty"`
 }
 
 type JiraUpdateInput struct {
@@ -4843,6 +4948,10 @@ type JiraUpdateInput struct {
 	UpdateProjects *bool `json:"updateProjects,omitempty"`
 	// Whether to refresh Jira metadata for the integration.
 	UpdateMetadata *bool `json:"updateMetadata,omitempty"`
+	// Whether to delete the current manual webhook configuration.
+	DeleteWebhook *bool `json:"deleteWebhook,omitempty"`
+	// Webhook secret for a new manual configuration.
+	WebhookSecret *string `json:"webhookSecret,omitempty"`
 }
 
 type JoinOrganizationInput struct {
@@ -5032,6 +5141,8 @@ type NotificationEntityInput struct {
 	IssueID *string `json:"issueId,omitempty"`
 	// The id of the project related to the notification.
 	ProjectID *string `json:"projectId,omitempty"`
+	// The id of the initiative related to the notification.
+	InitiativeID *string `json:"initiativeId,omitempty"`
 	// The id of the project update related to the notification.
 	ProjectUpdateID *string `json:"projectUpdateId,omitempty"`
 	// The id of the OAuth client approval related to the notification.
@@ -7660,9 +7771,9 @@ type Reminder struct {
 	// The user that created a reminder.
 	User *User `json:"user"`
 	// The time when a reminder triggers a notification in the user's inbox.
-	RemindAt string `json:"remindAt"`
+	RemindAt *string `json:"remindAt,omitempty"`
 	// Scheduling settings for recurring reminders.
-	Schedule string `json:"schedule"`
+	Schedule *string `json:"schedule,omitempty"`
 	// The reminder's comment.
 	Comment *string `json:"comment,omitempty"`
 	// The issue that the reminder is associated with.
@@ -8892,6 +9003,39 @@ type TemplateUpdateInput struct {
 	// The position of the template in the templates list.
 	SortOrder *float64 `json:"sortOrder,omitempty"`
 }
+
+// A text draft, used for comments and project updates.
+type TextDraft struct {
+	// The unique identifier of the entity.
+	ID string `json:"id"`
+	// The time at which the entity was created.
+	CreatedAt string `json:"createdAt"`
+	// The last time at which the entity was meaningfully updated, i.e. for all changes of syncable properties except those
+	//     for which updates should not produce an update to updatedAt (see skipUpdatedAtKeys). This is the same as the creation time if the entity hasn't
+	//     been updated after creation.
+	UpdatedAt string `json:"updatedAt"`
+	// The time at which the entity was archived. Null if the entity has not been archived.
+	ArchivedAt *string `json:"archivedAt,omitempty"`
+	// The text content as a Prosemirror document.
+	BodyData string `json:"bodyData"`
+	// Whether the draft was autogenerated for the user.
+	IsAutogenerated bool `json:"isAutogenerated"`
+	// The user who created the draft.
+	User *User `json:"user"`
+	// The issue for which this is a draft comment.
+	Issue *Issue `json:"issue,omitempty"`
+	// The project for which this is a draft project update.
+	Project *Project `json:"project,omitempty"`
+	// The project update for which this is a draft comment.
+	ProjectUpdate *ProjectUpdate `json:"projectUpdate,omitempty"`
+	// The comment for which this is a draft comment reply.
+	ParentComment *Comment `json:"parentComment,omitempty"`
+}
+
+func (TextDraft) IsNode() {}
+
+// The unique identifier of the entity.
+func (this TextDraft) GetID() string { return this.ID }
 
 // A time schedule.
 type TimeSchedule struct {

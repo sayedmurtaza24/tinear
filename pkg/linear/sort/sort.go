@@ -1,6 +1,11 @@
 package sort
 
-import "github.com/sayedmurtaza24/tinear/linear/models"
+import (
+	"slices"
+	"strings"
+
+	"github.com/sayedmurtaza24/tinear/pkg/linear/issue"
+)
 
 type (
 	SortBy    int
@@ -13,7 +18,9 @@ const (
 )
 
 const (
-	SortByCreatedAt SortBy = iota
+	SortSmart SortBy = iota
+	SortByCreatedAt
+	SortByUpdatedAt
 	SortByTitle
 	SortByPriority
 	SortByAssignee
@@ -32,50 +39,54 @@ func New(sortBy SortBy, sortOrder SortOrder) *SortOption {
 	}
 }
 
-func (s *SortOption) ToIssueSortInput() []*models.IssueSortInput {
-	var paginationSort models.PaginationSortOrder
-
-	switch s.sortOrder {
-	case SortOrderDescending:
-		paginationSort = models.PaginationSortOrderDescending
-	case SortOrderAscending:
-		paginationSort = models.PaginationSortOrderAscending
+func (s *SortOption) SortIssues(issues []issue.Issue) []issue.Issue {
+	sortFunc := func(i, j issue.Issue) int {
+		return 0
 	}
-
-	var sortOptions models.IssueSortInput
 
 	switch s.sortBy {
+	case SortSmart:
+		sortFunc = func(i, j issue.Issue) int {
+			prioWeight := int(i.Priority - j.Priority)
+			stateWeight := i.State.Position - j.State.Position
+			isMeWeight := i.Assignee.SortWeight() - j.Assignee.SortWeight()
+
+			return 16*isMeWeight + 8*prioWeight + 2*stateWeight
+		}
 	case SortByCreatedAt:
-		sortOptions = models.IssueSortInput{
-			Priority: &models.PrioritySort{
-				Order: &paginationSort,
-			},
+		sortFunc = func(i, j issue.Issue) int {
+			return int(i.CreatedAt.Sub(j.CreatedAt))
+		}
+	case SortByUpdatedAt:
+		sortFunc = func(i, j issue.Issue) int {
+			return int(i.UpdatedAt.Compare(j.CreatedAt))
 		}
 	case SortByTitle:
-		sortOptions = models.IssueSortInput{
-			Title: &models.TitleSort{
-				Order: &paginationSort,
-			},
+		sortFunc = func(i, j issue.Issue) int {
+			return strings.Compare(i.Title, j.Title)
 		}
 	case SortByPriority:
-		sortOptions = models.IssueSortInput{
-			Priority: &models.PrioritySort{
-				Order: &paginationSort,
-			},
+		sortFunc = func(i, j issue.Issue) int {
+			return int(i.Priority - j.Priority)
 		}
 	case SortByAssignee:
-		sortOptions = models.IssueSortInput{
-			Assignee: &models.AssigneeSort{
-				Order: &paginationSort,
-			},
+		sortFunc = func(i, j issue.Issue) int {
+			return strings.Compare(i.Assignee.DisplayName, j.Assignee.DisplayName)
 		}
 	case SortByState:
-		sortOptions = models.IssueSortInput{
-			WorkflowState: &models.WorkflowStateSort{
-				Order: &paginationSort,
-			},
+		sortFunc = func(i, j issue.Issue) int {
+			return int(i.State.Position - j.State.Position)
 		}
 	}
 
-	return []*models.IssueSortInput{&sortOptions}
+	sorted := slices.Clone(issues)
+
+	slices.SortStableFunc(sorted, func(i, j issue.Issue) int {
+		if s.sortOrder == SortOrderDescending {
+			return -sortFunc(i, j)
+		}
+		return sortFunc(i, j)
+	})
+
+	return issues
 }
