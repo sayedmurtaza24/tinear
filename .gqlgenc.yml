@@ -13,8 +13,6 @@ federation:
   version: 2
 endpoint:
   url: https://api.linear.app/graphql
-  headers:
-    Authorization: "${LINEAR_API_KEY}"
 query:
   - "./queries/*.graphql"
 generate:
