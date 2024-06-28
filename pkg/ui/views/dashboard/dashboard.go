@@ -35,7 +35,10 @@ type Model struct {
 	issue   *issue.Model
 }
 
-func New(common *common.Model, client linearClient.LinearClient) *Model {
+func New(common *common.Model, store storage.IssueStore, client linearClient.LinearClient) *Model {
+	var state DashboardState
+	var model Model
+
 	st := table.DefaultStyles()
 
 	st.Selected = st.Selected.
@@ -55,29 +58,32 @@ func New(common *common.Model, client linearClient.LinearClient) *Model {
 		table.WithLoadingText("loading..."),
 		table.WithVisualMode(true),
 		table.WithStyles(st),
+		table.WithIsLoading(len(store.Get()) == 0),
 	)
+	model.table = t
 
-	return &Model{
-		client: client,
-		common: common,
-		table:  t,
-	}
+	model.client = client
+	model.common = common
+	model.state = state
+	model.store = store
+
+	return &model
 }
 
 func (m *Model) Init() tea.Cmd {
-	m.renderTableCols()
+	m.renderTableCols(false)
+	m.renderTableRows(m.store.Get())
 
 	return tea.Batch(
-		m.table.SetLoading(true),
 		command.GetMe(m.client),
-		command.GetIssues(m.client, m.store.ShouldReset(), nil),
+		command.GetIssues(m.client, m.store, nil),
 	)
 }
 
 func (m *Model) ShortHelp() []key.Binding {
-	return []key.Binding{}
+	return m.table.KeyMap.ShortHelp()
 }
 
 func (m *Model) FullHelp() [][]key.Binding {
-	return [][]key.Binding{}
+	return m.table.KeyMap.FullHelp()
 }

@@ -11,15 +11,19 @@ import (
 )
 
 type storage struct {
-	Issues    []issue.Issue `json:"issues"`
-	LastReset time.Time     `json:"last_reset"`
+	Issues   []issue.Issue `json:"issues"`
+	LastSync time.Time     `json:"last_sync"`
 }
 
 type IssueStore struct {
-	path      string
-	read      bool
-	issues    []issue.Issue
-	lastReset time.Time
+	path     string
+	read     bool
+	issues   issue.IssueList
+	lastSync time.Time
+}
+
+func New() IssueStore {
+	return IssueStore{}
 }
 
 func (s *IssueStore) Get() []issue.Issue {
@@ -41,13 +45,13 @@ func (s *IssueStore) Get() []issue.Issue {
 	}
 
 	s.issues = strg.Issues
-	s.lastReset = strg.LastReset
+	s.lastSync = strg.LastSync
 	s.read = true
 
 	return strg.Issues
 }
 
-func (s *IssueStore) PutDiff(upsertedIssues ...issue.Issue) error {
+func (s *IssueStore) Put(upsertedIssues ...issue.Issue) error {
 	if !s.read {
 		s.Get()
 	}
@@ -66,22 +70,14 @@ func (s *IssueStore) PutDiff(upsertedIssues ...issue.Issue) error {
 		}
 	}
 
-	return s.put(s.issues, false)
+	return s.put(s.issues)
 }
 
-func (s *IssueStore) PutAll(issues ...issue.Issue) error {
-	return s.put(issues, true)
+func (s *IssueStore) LastReset() time.Time {
+	return s.lastSync.UTC()
 }
 
-func (s *IssueStore) ShouldReset() bool {
-	if !s.read {
-		s.Get()
-	}
-
-	return s.lastReset.Add(7 * 24 * time.Hour).Before(time.Now())
-}
-
-func (s *IssueStore) put(issues []issue.Issue, reset bool) error {
+func (s *IssueStore) put(issues []issue.Issue) error {
 	s.read = true
 	s.issues = issues
 
@@ -92,12 +88,8 @@ func (s *IssueStore) put(issues []issue.Issue, reset bool) error {
 	defer f.Close()
 
 	strg := storage{
-		Issues:    issues,
-		LastReset: s.lastReset,
-	}
-
-	if reset {
-		strg.LastReset = time.Now()
+		Issues:   issues,
+		LastSync: time.Now().UTC(),
 	}
 
 	return json.NewEncoder(f).Encode(strg)

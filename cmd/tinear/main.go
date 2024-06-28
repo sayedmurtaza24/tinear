@@ -6,14 +6,13 @@ import (
 	"net/http"
 	"os"
 
-	// _ "net/http/pprof"
-
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sayedmurtaza24/tinear/cmd/tinear/show"
 	linearClient "github.com/sayedmurtaza24/tinear/linear"
 	"github.com/sayedmurtaza24/tinear/pkg/common"
 	"github.com/sayedmurtaza24/tinear/pkg/keymap"
 	"github.com/sayedmurtaza24/tinear/pkg/screen"
+	"github.com/sayedmurtaza24/tinear/pkg/storage"
 )
 
 func initLinearClient() linearClient.LinearClient {
@@ -32,13 +31,9 @@ func initLinearClient() linearClient.LinearClient {
 }
 
 func main() {
-	// go func() {
-	// 	log.Fatal(http.ListenAndServe(":3000", nil))
-	// }()
-	//
 	f, err := tea.LogToFile("tinear.log", "DEBUG")
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to setup logger", slog.Any("error", err))
 	}
 	defer f.Close()
 
@@ -46,7 +41,8 @@ func main() {
 	size := screen.NewSize(0, 0)
 	common := common.New(keymap, size)
 	client := initLinearClient()
-	model := show.New(common, client)
+	store := storage.New()
+	model := show.New(common, store, client)
 
 	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
 	if err != nil {

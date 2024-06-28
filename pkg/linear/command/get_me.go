@@ -17,12 +17,12 @@ func GetMe(client linearClient.LinearClient) tea.Cmd {
 			return err
 		}
 
-		return response(user.User{
+		return GetMeRes(response(user.User{
 			ID:          resp.Viewer.ID,
 			DisplayName: resp.Viewer.DisplayName,
 			Email:       resp.Viewer.Email,
 			IsMe:        resp.Viewer.IsMe,
 			OrgName:     resp.Viewer.Organization.Name,
-		})
+		}))
 	}
 }

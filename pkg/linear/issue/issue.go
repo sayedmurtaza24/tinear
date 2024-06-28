@@ -17,6 +17,8 @@ import (
 	"github.com/sayedmurtaza24/tinear/pkg/ui/text"
 )
 
+type IssueList []Issue
+
 type Issue struct {
 	ID         string
 	Identifier string
@@ -36,7 +38,7 @@ func (i *Issue) Equal(other Issue) bool {
 	return reflect.DeepEqual(*i, other)
 }
 
-func IssuesToRows(issues []Issue, focused bool) []*table.Row {
+func (issues IssueList) ToRows(focused bool) []*table.Row {
 	rows := make([]*table.Row, 0)
 
 	for _, issue := range issues {
@@ -135,13 +137,17 @@ func toString(n *string) string {
 	return *n
 }
 
-func FromLinearClientGetIssues(resp linearClient.GetIssues) []Issue {
+func FromLinearClientGetIssues(resp *linearClient.GetIssues) []Issue {
+	if resp == nil {
+		return []Issue{}
+	}
+
 	var issues []Issue
 
 	for _, iss := range resp.Issues.GetNodes() {
-		labels := make([]label.Label, 0, len(iss.Labels.Nodes))
+		labels := make([]label.Label, 0, len(iss.GetLabels().GetNodes()))
 
-		for _, l := range iss.Labels.Nodes {
+		for _, l := range iss.GetLabels().GetNodes() {
 			labels = append(labels, label.Label{
 				Name:  l.Name,
 				Color: l.Color,
@@ -158,16 +164,22 @@ func FromLinearClientGetIssues(resp linearClient.GetIssues) []Issue {
 			panic(err)
 		}
 
+		assignee := iss.Assignee
+
+		if assignee == nil {
+			assignee = &linearClient.GetIssues_Issues_Nodes_Assignee{}
+		}
+
 		is := Issue{
 			ID:         iss.ID,
 			Identifier: iss.Identifier,
 			Title:      iss.Title,
 			Desc:       toString(iss.Description),
 			Assignee: user.User{
-				ID:          iss.GetAssignee().ID,
-				DisplayName: iss.GetAssignee().DisplayName,
-				Email:       iss.GetAssignee().Email,
-				IsMe:        iss.GetAssignee().IsMe,
+				ID:          assignee.ID,
+				DisplayName: assignee.DisplayName,
+				Email:       assignee.Email,
+				IsMe:        assignee.IsMe,
 			},
 			Labels:   labels,
 			Priority: prio.Prio(iss.Priority),

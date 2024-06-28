@@ -3,15 +3,20 @@ package dashboard
 import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sayedmurtaza24/tinear/pkg/linear/issue"
+	"github.com/sayedmurtaza24/tinear/pkg/ui/atoms/help"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/color"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/layouts"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/table"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/text"
 )
 
-func (m *Model) renderTableCols() {
+func (m *Model) renderTableCols(helpMode bool) {
 	colColor := color.Simple("#bbb")
 	colHColor := color.Simple("#DCA561")
+
+	if !helpMode {
+		colHColor = colColor
+	}
 
 	cols := []*table.Column{
 		table.NewColumn(
@@ -86,8 +91,8 @@ func (m *Model) renderIssues() string {
 	return m.table.View()
 }
 
-func (m *Model) renderTableRows(issues []issue.Issue) {
-	rows := issue.IssuesToRows(issues, m.table.Focused())
+func (m *Model) renderTableRows(issues issue.IssueList) {
+	rows := issues.ToRows(m.table.Focused())
 
 	m.table.SetRows(rows)
 	m.table.SetWidth(m.common.Size.Width())
@@ -100,5 +105,7 @@ func (m *Model) View() string {
 		m.renderTopBar(),
 		"",
 		m.renderIssues(),
+		"",
+		help.New(m, m.common.Size.Width(), false),
 	)
 }

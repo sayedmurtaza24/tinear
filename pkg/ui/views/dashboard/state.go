@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"github.com/sayedmurtaza24/tinear/pkg/linear/issue"
 	"github.com/sayedmurtaza24/tinear/pkg/linear/user"
 )
 
@@ -13,6 +12,5 @@ const (
 )
 
 type DashboardState struct {
-	Me     user.User
-	Issues []issue.Issue
+	Me user.User
 }

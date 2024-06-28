@@ -134,7 +134,6 @@ func NewColumn(title text.Focusable, widthFactor float32, opts ...columnOption) 
 	return &col
 }
 
-// widthFactor must be between 0.0 and 1.0
 type KeyMap struct {
 	LineUp       key.Binding
 	LineDown     key.Binding

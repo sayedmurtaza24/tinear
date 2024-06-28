@@ -2,35 +2,34 @@ package command
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	linearClient "github.com/sayedmurtaza24/tinear/linear"
 	"github.com/sayedmurtaza24/tinear/linear/models"
 	"github.com/sayedmurtaza24/tinear/pkg/linear/issue"
+	"github.com/sayedmurtaza24/tinear/pkg/storage"
 )
+
+const sixMonths = 6 * 30 * 24 * time.Hour
 
 type GetIssuesRes Resumable[[]issue.Issue]
 
-func GetIssues(client linearClient.LinearClient, all bool, after *string) tea.Cmd {
+func GetIssues(client linearClient.LinearClient, store storage.IssueStore, after *string) tea.Cmd {
 	return func() tea.Msg {
-		now := time.Now().Format(time.RFC3339)
-
-		if all {
-			now = time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
-		}
+		lastReset := store.LastReset().Format(time.RFC3339)
 
 		filter := models.IssueFilter{
 			Or: []*models.IssueFilter{
 				{
-					UpdatedAt: &models.DateComparator{
-						Gt: &now,
-					},
+					UpdatedAt: &models.DateComparator{Gte: &lastReset},
 				},
 				{
-					CreatedAt: &models.DateComparator{
-						Gt: &now,
-					},
+					CreatedAt: &models.DateComparator{Gte: &lastReset},
+				},
+				{
+					CanceledAt: &models.NullableDateComparator{Gte: &lastReset},
 				},
 			},
 		}
@@ -45,8 +44,15 @@ func GetIssues(client linearClient.LinearClient, all bool, after *string) tea.Cm
 			return err
 		}
 
-		issues := issue.FromLinearClientGetIssues(*resp)
+		issues := issue.FromLinearClientGetIssues(resp)
 
-		return paginated(issues, &resp.Issues.PageInfo)
+		slog.Info("[command.GetIssues]", "len", len(issues))
+
+		err = store.Put(issues...)
+		if err != nil {
+			panic(err)
+		}
+
+		return GetIssuesRes(paginated(issues, &resp.Issues.PageInfo))
 	}
 }

@@ -18,17 +18,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case command.GetIssuesRes:
 		m.table.SetLoading(false)
-
-		m.state.Issues = append(m.state.Issues, msg.Result...)
 		if msg.After != nil {
-			cmds = append(cmds, command.GetIssues(m.client, m.store.ShouldReset(), msg.After))
-		} else {
-			if err := m.store.PutDiff(m.state.Issues...); err != nil {
-				return m, tea.Quit
-			}
+			cmds = append(cmds, command.GetIssues(m.client, m.store, msg.After))
 		}
-
-		m.renderTableRows(m.state.Issues)
+		m.renderTableRows(m.store.Get())
 
 	case tea.WindowSizeMsg:
 		m.table.SetWidth(msg.Width)

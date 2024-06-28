@@ -63,7 +63,7 @@ func TestDiffPut(t *testing.T) {
 	store.issues = testIssues
 	store.path = path.Join(dir, "tinear-issues-diff.json")
 
-	err = store.PutDiff(updatedIssue)
+	err = store.Put(updatedIssue)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestReset(t *testing.T) {
 	}
 	store.path = path.Join(dir, "tinear-issues-w.json")
 
-	err = store.PutAll(testIssues...)
+	err = store.Put(testIssues...)
 	if err != nil {
 		t.Fatal(err)
 	}
