@@ -1,4 +1,14 @@
-package command
+package client
+
+import linearClient "github.com/sayedmurtaza24/tinear/linear"
+
+type Client struct {
+	client linearClient.LinearClient
+}
+
+func New(client linearClient.LinearClient) *Client {
+	return &Client{client: client}
+}
 
 type nextPageGetter[T any] interface {
 	GetHasNextPage() bool

@@ -1,15 +1,11 @@
 package dashboard
 
 import (
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	linearClient "github.com/sayedmurtaza24/tinear/linear"
-	"github.com/sayedmurtaza24/tinear/pkg/common"
-	"github.com/sayedmurtaza24/tinear/pkg/linear/command"
-	"github.com/sayedmurtaza24/tinear/pkg/linear/sort"
-	"github.com/sayedmurtaza24/tinear/pkg/storage"
+	"github.com/sayedmurtaza24/tinear/pkg/client"
+	"github.com/sayedmurtaza24/tinear/pkg/store"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/input"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/issue"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/status"
@@ -17,17 +13,15 @@ import (
 )
 
 type Model struct {
-	state DashboardState
+	width  int
+	height int
 
-	store storage.IssueStore
+	store *store.Store
 
-	client linearClient.LinearClient
-
-	sortOption sort.SortOption
+	client *client.Client
 
 	loadingStatus *status.Status
 
-	common  *common.Model
 	status  *status.Model
 	input   *input.Model
 	spinner spinner.Model
@@ -35,8 +29,7 @@ type Model struct {
 	issue   *issue.Model
 }
 
-func New(common *common.Model, store storage.IssueStore, client linearClient.LinearClient) *Model {
-	var state DashboardState
+func New(store *store.Store, client *client.Client) *Model {
 	var model Model
 
 	st := table.DefaultStyles()
@@ -58,13 +51,11 @@ func New(common *common.Model, store storage.IssueStore, client linearClient.Lin
 		table.WithLoadingText("loading..."),
 		table.WithVisualMode(true),
 		table.WithStyles(st),
-		table.WithIsLoading(len(store.Get()) == 0),
+		// table.WithIsLoading(len(store.Get()) == 0),
 	)
 	model.table = t
 
 	model.client = client
-	model.common = common
-	model.state = state
 	model.store = store
 
 	return &model
@@ -72,18 +63,10 @@ func New(common *common.Model, store storage.IssueStore, client linearClient.Lin
 
 func (m *Model) Init() tea.Cmd {
 	m.renderTableCols(false)
-	m.renderTableRows(m.store.Get())
+	// m.renderTableRows(m.store.Get())
 
 	return tea.Batch(
-		command.GetMe(m.client),
-		command.GetIssues(m.client, m.store, nil),
+		m.client.GetMe(),
+		m.client.GetIssues(nil),
 	)
-}
-
-func (m *Model) ShortHelp() []key.Binding {
-	return m.table.KeyMap.ShortHelp()
-}
-
-func (m *Model) FullHelp() [][]key.Binding {
-	return m.table.KeyMap.FullHelp()
 }

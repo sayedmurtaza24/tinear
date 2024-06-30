@@ -2,7 +2,7 @@ package dashboard
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/sayedmurtaza24/tinear/pkg/linear/command"
+	"github.com/sayedmurtaza24/tinear/pkg/client"
 )
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -13,15 +13,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case error:
 		return m, tea.Quit
 
-	case command.GetMeRes:
-		m.state.Me = msg.Result
+	case client.GetMeRes:
+		// m.state.Me = msg.Result
 
-	case command.GetIssuesRes:
+	case client.GetIssuesRes:
 		m.table.SetLoading(false)
 		if msg.After != nil {
-			cmds = append(cmds, command.GetIssues(m.client, m.store, msg.After))
+			cmds = append(cmds, m.client.GetIssues(msg.After))
 		}
-		m.renderTableRows(m.store.Get())
+		// m.renderTableRows(m.store.Get())
 
 	case tea.WindowSizeMsg:
 		m.table.SetWidth(msg.Width)

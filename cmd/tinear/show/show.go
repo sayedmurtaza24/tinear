@@ -3,22 +3,18 @@ package show
 import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	linearClient "github.com/sayedmurtaza24/tinear/linear"
-	"github.com/sayedmurtaza24/tinear/pkg/common"
-	"github.com/sayedmurtaza24/tinear/pkg/storage"
+	"github.com/sayedmurtaza24/tinear/pkg/client"
+	"github.com/sayedmurtaza24/tinear/pkg/store"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/views/dashboard"
 )
 
 type model struct {
-	common *common.Model
-
 	dashboard *dashboard.Model
 }
 
-func New(common *common.Model, store storage.IssueStore, client linearClient.LinearClient) *model {
+func New(store *store.Store, client *client.Client) *model {
 	return &model{
-		common:    common,
-		dashboard: dashboard.New(common, store, client),
+		dashboard: dashboard.New(store, client),
 	}
 }
 
@@ -31,10 +27,9 @@ func (m *model) Init() tea.Cmd {
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.common.Size.SetSize(msg.Width, msg.Height)
 
 	case tea.KeyMsg:
-		if key.Matches(msg, m.common.Keymap.Quit) {
+		if key.Matches(msg, key.NewBinding(key.WithKeys("q", "ctrl+c"))) {
 			return m, tea.Quit
 		}
 	}

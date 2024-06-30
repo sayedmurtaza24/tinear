@@ -6,7 +6,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/sayedmurtaza24/tinear/pkg/common"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/text"
 )
 
@@ -138,8 +137,6 @@ func DefaultStyles() Styles {
 }
 
 type Model struct {
-	common *common.Model
-
 	styles Styles
 
 	mode Mode
@@ -163,9 +160,8 @@ func WithMode(mode Mode) modelOpt {
 	}
 }
 
-func New(common *common.Model, opts ...modelOpt) *Model {
+func New(opts ...modelOpt) *Model {
 	m := &Model{
-		common:  common,
 		mode:    Normal,
 		styles:  DefaultStyles(),
 		focused: true,

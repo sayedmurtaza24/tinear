@@ -9,10 +9,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sayedmurtaza24/tinear/cmd/tinear/show"
 	linearClient "github.com/sayedmurtaza24/tinear/linear"
-	"github.com/sayedmurtaza24/tinear/pkg/common"
-	"github.com/sayedmurtaza24/tinear/pkg/keymap"
-	"github.com/sayedmurtaza24/tinear/pkg/screen"
-	"github.com/sayedmurtaza24/tinear/pkg/storage"
+	"github.com/sayedmurtaza24/tinear/pkg/client"
+	"github.com/sayedmurtaza24/tinear/pkg/store"
 )
 
 func initLinearClient() linearClient.LinearClient {
@@ -37,12 +35,13 @@ func main() {
 	}
 	defer f.Close()
 
-	keymap := keymap.NewDefault()
-	size := screen.NewSize(0, 0)
-	common := common.New(keymap, size)
-	client := initLinearClient()
-	store := storage.New()
-	model := show.New(common, store, client)
+	store, err := store.New(":memory:")
+	if err != nil {
+		slog.Error("failed to setup store", slog.Any("error", err))
+	}
+
+	client := client.New(initLinearClient())
+	model := show.New(store, client)
 
 	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
 	if err != nil {
