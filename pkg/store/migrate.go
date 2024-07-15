@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log/slog"
 )
 
 //go:embed migrations/*.sql
@@ -16,14 +15,11 @@ func (s *Store) migrate() error {
 
 	_ = s.db.QueryRow(`SELECT version FROM migrations ORDER BY version DESC LIMIT 1;`).Scan(&version)
 
-	slog.Info("[store.migrate] latest migration", "version", version)
-
 	i := version + 1
 	for {
 		migration, err := migrationsDir.ReadFile(fmt.Sprintf("migrations/v%d.sql", i))
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
-				slog.Info("[store.migrate] migrations ended")
 				break
 			}
 			return fmt.Errorf("unexpected error: %w", err)
@@ -35,8 +31,6 @@ func (s *Store) migrate() error {
 		}
 
 		_, _ = s.db.Exec(`INSERT INTO migrations DEFAULT VALUES;`)
-
-		slog.Info("[store.migrate] ran migration", "version", i)
 
 		i++
 	}

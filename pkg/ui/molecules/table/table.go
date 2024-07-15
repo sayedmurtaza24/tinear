@@ -442,6 +442,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.GotoBottom()
 		case key.Matches(msg, m.KeyMap.VisualMode):
 			m.SetVisualMode(!m.visualMode)
+		case msg.Type == tea.KeyEsc:
+			m.visualMode = false
 		}
 	}
 
@@ -458,6 +460,10 @@ func (m *Model) Focus() {
 
 func (m *Model) Blur() {
 	m.focus = false
+}
+
+func (m *Model) TopOffset() int {
+	return m.cursor - m.start + lipgloss.Height(m.headersView())
 }
 
 func (m *Model) Loading() bool {
@@ -526,6 +532,10 @@ func (m Model) VisualMode() bool {
 }
 
 func (m Model) SelectedRows() (identifiers []string) {
+	if !m.visualMode {
+		return []string{m.SelectedRow()}
+	}
+
 	start, end := m.selectedRange.GetRange()
 
 	var rows []string
@@ -556,10 +566,13 @@ func (m *Model) SetSelectedRow(identifier string) {
 
 func (m *Model) SetRows(r []*Row) {
 	m.rows = r
+
+	m.SetCursor(m.cursor)
 }
 
 func (m *Model) SetColumns(c []*Column) {
 	m.cols = c
+	m.calculateColsWidth()
 }
 
 func (m *Model) SetWidth(w int) {

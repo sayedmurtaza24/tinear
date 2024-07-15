@@ -13,15 +13,18 @@ query GetIssues($filter: IssueFilter, $after: String, $first: Int = 50) {
       }
       assignee {
         id
+        name
         email
         displayName
         isMe
       }
       project {
+        id
         name
         color
       }
       state {
+        id
         name
         color
         position
@@ -32,8 +35,9 @@ query GetIssues($filter: IssueFilter, $after: String, $first: Int = 50) {
           color
         }
       }
-      updatedAt
       createdAt
+      updatedAt
+      canceledAt
     }
     pageInfo {
       hasNextPage

@@ -1,8 +1,6 @@
 package text
 
 import (
-	"strings"
-
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/color"
 )
@@ -31,6 +29,23 @@ var I Opt = func(style lipgloss.Style) lipgloss.Style {
 var Width = func(width int) Opt {
 	return func(style lipgloss.Style) lipgloss.Style {
 		return style.Width(width)
+	}
+}
+
+var Arrow = func(bgColor string, left bool) Opt {
+	return func(s lipgloss.Style) lipgloss.Style {
+		arrow := lipgloss.NewStyle().
+			Foreground(s.GetBackground())
+		if bgColor != "" {
+			arrow = arrow.Background(lipgloss.Color(bgColor))
+		}
+		s = s.Transform(func(v string) string {
+			if left {
+				return arrow.Render(rightArrow) + v
+			}
+			return v + arrow.Render(leftArrow)
+		})
+		return s
 	}
 }
 
@@ -128,27 +143,25 @@ func KeymapText(
 	opts ...Opt,
 ) keymapText {
 	focused := lipgloss.NewStyle().Foreground(fgColor.Focused())
-	blurred := lipgloss.NewStyle().Foreground(fgColor.Blurred())
-
 	hfocused := lipgloss.NewStyle().Foreground(keymapColor.Focused())
-	hblurred := lipgloss.NewStyle().Foreground(keymapColor.Blurred())
 
 	for _, opt := range opts {
 		opt(focused)
-		opt(blurred)
 		opt(hfocused)
-		opt(hblurred)
 	}
 
-	hfocusedStr := strings.Join([]string{
-		focused.Render(value[:keymapIndex]),
-		hfocused.Render(string(value[keymapIndex])),
-		focused.Render(value[keymapIndex+1:]),
-	}, "")
+	runes := []rune(value)
+
+	hfocusedStr := lipgloss.JoinHorizontal(
+		lipgloss.Center,
+		focused.Render(string(runes[:keymapIndex])),
+		hfocused.Render(string(runes[keymapIndex])),
+		focused.Render(string(runes[keymapIndex+1:])),
+	)
 
 	str := keymapText{
 		raw:     value,
-		blurred: blurred.Render(value),
+		blurred: hfocusedStr,
 		focused: hfocusedStr,
 	}
 
@@ -165,4 +178,35 @@ func (k keymapText) Focused() string {
 
 func (k keymapText) Blurred() string {
 	return k.blurred
+}
+
+type joined struct {
+	raw     string
+	list    []Focusable
+	focused string
+	blurred string
+}
+
+func Joined(sep string, texts ...Focusable) Focusable {
+	var joined joined
+
+	for _, t := range texts {
+		joined.raw += t.Raw()
+		joined.focused += t.Focused() + sep
+		joined.blurred += t.Blurred() + sep
+	}
+
+	return joined
+}
+
+func (j joined) Raw() string {
+	return j.raw
+}
+
+func (j joined) Focused() string {
+	return j.focused
+}
+
+func (j joined) Blurred() string {
+	return j.blurred
 }

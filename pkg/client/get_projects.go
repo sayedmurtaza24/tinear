@@ -7,7 +7,7 @@ import (
 	"github.com/sayedmurtaza24/tinear/pkg/store"
 )
 
-type GetProjectsRes Command[[]store.Project]
+type GetProjectsRes Resumable[[]store.Project]
 
 func (c *Client) GetProjects(after *string) tea.Cmd {
 	return func() tea.Msg {
@@ -30,6 +30,6 @@ func (c *Client) GetProjects(after *string) tea.Cmd {
 			})
 		}
 
-		return paginated(projects, &resp.Projects.PageInfo)
+		return GetProjectsRes(paginated(projects, &resp.Projects.PageInfo))
 	}
 }

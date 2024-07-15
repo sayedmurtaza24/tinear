@@ -2,31 +2,28 @@ package dashboard
 
 import (
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sayedmurtaza24/tinear/pkg/client"
 	"github.com/sayedmurtaza24/tinear/pkg/store"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/input"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/issue"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/status"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/table"
 )
 
 type Model struct {
-	width  int
-	height int
+	width      int
+	height     int
+	syncing    bool
+	sortMode   bool
+	filterMode bool
 
-	store *store.Store
+	hovered *store.Issue
 
+	store  *store.Store
 	client *client.Client
 
-	loadingStatus *status.Status
-
-	status  *status.Model
-	input   *input.Model
-	spinner spinner.Model
-	table   table.Model
-	issue   *issue.Model
+	table table.Model
+	input textinput.Model
 }
 
 func New(store *store.Store, client *client.Client) *Model {
@@ -51,22 +48,25 @@ func New(store *store.Store, client *client.Client) *Model {
 		table.WithLoadingText("loading..."),
 		table.WithVisualMode(true),
 		table.WithStyles(st),
-		// table.WithIsLoading(len(store.Get()) == 0),
 	)
 	model.table = t
 
 	model.client = client
 	model.store = store
+	model.syncing = true
+
+	model.input = textinput.New()
+	model.input.Prompt = ""
 
 	return &model
 }
 
 func (m *Model) Init() tea.Cmd {
-	m.renderTableCols(false)
-	// m.renderTableRows(m.store.Get())
+	m.updateTableCols()
 
 	return tea.Batch(
-		m.client.GetMe(),
-		m.client.GetIssues(nil),
+		m.updateIssues(),
+		m.table.SetLoading(m.store.Current().FirstTime),
+		m.client.GetOrg(),
 	)
 }

@@ -35,7 +35,7 @@ func main() {
 	}
 	defer f.Close()
 
-	store, err := store.New(":memory:")
+	store, err := store.New("db")
 	if err != nil {
 		slog.Error("failed to setup store", slog.Any("error", err))
 	}

@@ -6,9 +6,10 @@ import (
 	"time"
 )
 
-type Organization struct {
-	ID   string
-	Name string
+type Org struct {
+	ID     string
+	Name   string
+	URLKey string
 }
 
 type Project struct {
@@ -18,9 +19,9 @@ type Project struct {
 }
 
 type State struct {
-	Name     string
-	Color    string
-	Position int
+	ID    string
+	Name  string
+	Color string
 }
 
 func (state *State) position(name string, pos int) int {
@@ -54,6 +55,7 @@ type Team struct {
 
 type User struct {
 	ID          string
+	Name        string
 	DisplayName string
 	Email       string
 	IsMe        bool
@@ -69,6 +71,10 @@ type ParsedLabel struct {
 }
 
 func (l Label) Parse() ([]ParsedLabel, error) {
+	if l == nil {
+		return make([]ParsedLabel, 0), nil
+	}
+
 	var parsed []ParsedLabel
 	err := json.Unmarshal(l, &parsed)
 	if err != nil {
@@ -96,6 +102,15 @@ type Issue struct {
 	Team       Team
 	State      State
 	Project    Project
+	Pinned     bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	CanceledAt *time.Time
 }
+
+func (u Org) getID() string     { return u.ID }
+func (u User) getID() string    { return u.ID }
+func (u Team) getID() string    { return u.ID }
+func (u Project) getID() string { return u.ID }
+func (u State) getID() string   { return u.ID }
+func (u Issue) getID() string   { return u.ID }

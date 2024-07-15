@@ -1,6 +1,8 @@
 package client
 
-import linearClient "github.com/sayedmurtaza24/tinear/linear"
+import (
+	linearClient "github.com/sayedmurtaza24/tinear/linear"
+)
 
 type Client struct {
 	client linearClient.LinearClient

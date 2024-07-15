@@ -3,10 +3,33 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"regexp"
+	"slices"
 	"strings"
 )
 
-func batchInsert[T any](
+type idGetter interface{ getID() string }
+
+var spaceRemoveRegEx = regexp.MustCompile("( |\t){2,}")
+
+func prettify(query string) string {
+	return spaceRemoveRegEx.ReplaceAllString(query, " ")
+}
+
+func removeDuplicates[T idGetter](list []T) []T {
+	m := make(map[string]T)
+	for _, item := range list {
+		m[item.getID()] = item
+	}
+	var res []T
+	for _, v := range m {
+		res = append(res, v)
+	}
+	return res
+}
+
+func batchInsert[T idGetter](
 	db *sql.DB,
 	tableName string,
 	columns []string,
@@ -20,9 +43,23 @@ func batchInsert[T any](
 	}
 	defer tx.Rollback()
 
-	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES ", tableName, strings.Join(columns, ", "))
+	query := fmt.Sprintf("\nINSERT INTO %s (%s)\nVALUES ", tableName, strings.Join(columns, ", "))
 
-	placeholders := strings.Join(strings.Split(strings.Repeat("?", len(columns)), ""), ", ")
+	hasOrgID := slices.Contains(columns, "org_id")
+
+	var placeholders string
+	if hasOrgID {
+		placeholders = strings.Join(strings.Split(strings.Repeat("?", len(columns)-1), ""), ", ")
+		placeholders += ", (SELECT id FROM orgs WHERE orgs.active = TRUE)"
+	} else {
+		placeholders = strings.Join(strings.Split(strings.Repeat("?", len(columns)), ""), ", ")
+	}
+
+	rows = removeDuplicates(rows)
+
+	if len(rows) == 0 {
+		return nil
+	}
 
 	separator := func(i int) string {
 		if i != len(rows)-1 {
@@ -34,11 +71,8 @@ func batchInsert[T any](
 	var args []any
 	for i, value := range rows {
 		rowArgs := rowArgs(&value)
-		if len(rowArgs) != len(columns) {
-			return fmt.Errorf("len args != len columns")
-		}
 		args = append(args, rowArgs...)
-		query += fmt.Sprintf("(%s)%s", placeholders, separator(i))
+		query += fmt.Sprintf("(%s)%s\n", placeholders, separator(i))
 	}
 
 	query += onconflict
@@ -51,6 +85,7 @@ func batchInsert[T any](
 
 	_, err = stmt.Exec(args...)
 	if err != nil {
+		log.Println(prettify(query))
 		return fmt.Errorf("couldn't execute statement: %w", err)
 	}
 
@@ -62,17 +97,19 @@ func batchInsert[T any](
 	return nil
 }
 
-func batchSelect[T any](
+func batchSelect[T idGetter](
 	db *sql.DB,
 	tableName string,
 	columns []string,
 	scan func(v *T) []any,
 	where string,
+	whereArgs ...any,
 ) ([]T, error) {
 	query := fmt.Sprintf("SELECT %s FROM %s %s", strings.Join(columns, ", "), tableName, where)
 
-	rows, err := db.Query(query)
+	rows, err := db.Query(query, whereArgs...)
 	if err != nil {
+		log.Println(query)
 		return nil, fmt.Errorf("couldn't query rows: %w", err)
 	}
 	defer rows.Close()
@@ -88,7 +125,7 @@ func batchSelect[T any](
 	}
 
 	if rows.Err() != nil {
-		return nil, fmt.Errorf("rows returned err: %w", err)
+		return nil, fmt.Errorf("rows returned err: %w", rows.Err())
 	}
 
 	return result, nil

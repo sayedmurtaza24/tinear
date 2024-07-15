@@ -1,6 +1,6 @@
 module github.com/sayedmurtaza24/tinear
 
-go 1.22.1
+go 1.22.4
 
 require (
 	github.com/Yamashou/gqlgenc v0.19.3
