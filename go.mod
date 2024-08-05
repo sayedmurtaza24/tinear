@@ -9,6 +9,7 @@ require (
 	github.com/charmbracelet/glamour v0.7.0
 	github.com/charmbracelet/lipgloss v0.10.0
 	github.com/glebarez/go-sqlite v1.22.0
+	github.com/jmoiron/sqlx v1.4.0
 	github.com/mattn/go-runewidth v0.0.15
 )
 

@@ -16,7 +16,7 @@ type Color struct {
 func (c Color) Darken(factor float64) Color {
 	var res Color
 
-	d, err := darken(factor, c.focused)
+	d, err := Darken(factor, c.focused)
 	if err != nil {
 		panic(err)
 	}
@@ -24,7 +24,7 @@ func (c Color) Darken(factor float64) Color {
 	res.focused = d
 
 	if c.blurred != c.focused {
-		b, err := darken(factor, c.blurred)
+		b, err := Darken(factor, c.blurred)
 		if err != nil {
 			panic(err)
 		}
@@ -40,7 +40,7 @@ func (c Color) Darken(factor float64) Color {
 func (c Color) Brighten(percent float64) Color {
 	var res Color
 
-	b, err := brighten(percent, c.focused)
+	b, err := Brighten(percent, c.focused)
 	if err != nil {
 		panic(err)
 	}
@@ -48,7 +48,7 @@ func (c Color) Brighten(percent float64) Color {
 	res.focused = b
 
 	if c.blurred != c.focused {
-		b, err := brighten(percent, c.blurred)
+		b, err := Brighten(percent, c.blurred)
 		if err != nil {
 			panic(err)
 		}
@@ -87,7 +87,7 @@ func Focusable(focused, blurred string) Color {
 	return c
 }
 
-func darken(factor float64, color string) (string, error) {
+func Darken(factor float64, color string) (string, error) {
 	if factor < 0 || factor > 1 {
 		return "", fmt.Errorf("factor must be between 0 and 1")
 	}
@@ -119,7 +119,7 @@ func darken(factor float64, color string) (string, error) {
 	return fmt.Sprintf("#%02x%02x%02x", r, g, b), nil
 }
 
-func brighten(factor float64, color string) (string, error) {
+func Brighten(factor float64, color string) (string, error) {
 	if factor < 0 || factor > 1 {
 		return "", fmt.Errorf("factor must be between 0 and 1")
 	}
@@ -147,19 +147,8 @@ func brighten(factor float64, color string) (string, error) {
 	g = int64(float64(255-g)*factor) + g
 	b = int64(float64(255-b)*factor) + b
 
-	// Ensure RGB values do not exceed 255
-	if r > 255 {
-		r = 255
-	}
-	if g > 255 {
-		g = 255
-	}
-	if b > 255 {
-		b = 255
-	}
-
 	// Convert back to hex string
-	return fmt.Sprintf("#%02x%02x%02x", r, g, b), nil
+	return fmt.Sprintf("#%02x%02x%02x", min(r, 255), min(g, 255), min(b, 255)), nil
 }
 
 func expandHexColor(shortHex string) string {

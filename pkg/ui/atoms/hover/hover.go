@@ -97,13 +97,13 @@ func HoverIssue(issue store.Issue, width, maxHeight int, focus bool) string {
 
 	var description string
 
-	if issue.Desc != "" {
+	if issue.Description != "" {
 		r, _ := glamour.NewTermRenderer(
 			glamour.WithAutoStyle(),
 			glamour.WithWordWrap(width-8),
 		)
 
-		description, _ = r.Render(issue.Desc)
+		description, _ = r.Render(issue.Description)
 	}
 
 	maxH := lipgloss.NewStyle().MaxHeight(maxHeight - 5).Render

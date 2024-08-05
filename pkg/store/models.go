@@ -6,10 +6,16 @@ import (
 	"time"
 )
 
+type idGetter interface{ getID() string }
+
 type Org struct {
-	ID     string
-	Name   string
-	URLKey string
+	ID        string
+	Name      string
+	URLKey    string
+	Active    bool
+	SyncedAt  time.Time
+	SortMode  SortMode
+	SortOrder sortOrder
 }
 
 type Project struct {
@@ -92,20 +98,20 @@ func ToLabel(p []ParsedLabel) ([]byte, error) {
 }
 
 type Issue struct {
-	ID         string
-	Identifier string
-	Title      string
-	Desc       string
-	Labels     Label
-	Assignee   User
-	Priority   Prio
-	Team       Team
-	State      State
-	Project    Project
-	Pinned     bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	CanceledAt *time.Time
+	ID          string
+	Identifier  string
+	Title       string
+	Description string
+	Labels      Label
+	Priority    Prio
+	Team        Team
+	State       State
+	Assignee    User
+	Project     Project
+	Pinned      bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	CanceledAt  *time.Time
 }
 
 func (u Org) getID() string     { return u.ID }

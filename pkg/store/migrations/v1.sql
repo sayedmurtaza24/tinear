@@ -76,3 +76,15 @@ CREATE TABLE issues (
     FOREIGN KEY (assignee_id) REFERENCES users(id),
     FOREIGN KEY (project_id) REFERENCES projects(id)
 );
+
+CREATE VIRTUAL TABLE search USING fts5 (
+  tokenize = "trigram",
+  id UNINDEXED,
+  title,
+  description,
+  state,
+  project,
+  team,
+  assignee,
+  labels
+);

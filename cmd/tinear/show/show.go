@@ -1,8 +1,6 @@
 package show
 
 import (
-	"log"
-
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sayedmurtaza24/tinear/pkg/client"
@@ -28,10 +26,6 @@ func (m *model) Init() tea.Cmd {
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case error:
-		log.Println(msg)
-		return m, tea.Quit
-
 	case tea.KeyMsg:
 		if key.Matches(msg, key.NewBinding(key.WithKeys("ctrl+c"))) {
 			return m, tea.Quit

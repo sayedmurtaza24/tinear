@@ -78,6 +78,8 @@ type Model struct {
 	selectedRange     selectedRange
 
 	noHeader bool
+
+	onMove func(string) tea.Cmd
 }
 
 type RowItem struct {
@@ -427,23 +429,23 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.KeyMap.LineUp):
-			m.MoveUp(1)
+			return m, m.MoveUp(1)
 		case key.Matches(msg, m.KeyMap.LineDown):
-			m.MoveDown(1)
+			return m, m.MoveDown(1)
 		case key.Matches(msg, m.KeyMap.HalfPageUp):
-			m.MoveUp(m.itemsHeight / 2)
+			return m, m.MoveUp(m.itemsHeight / 2)
 		case key.Matches(msg, m.KeyMap.HalfPageDown):
-			m.MoveDown(m.itemsHeight / 2)
+			return m, m.MoveDown(m.itemsHeight / 2)
 		case key.Matches(msg, m.KeyMap.LineDown):
-			m.MoveDown(1)
+			return m, m.MoveDown(1)
 		case key.Matches(msg, m.KeyMap.GotoTop):
-			m.GotoTop()
+			return m, m.GotoTop()
 		case key.Matches(msg, m.KeyMap.GotoBottom):
-			m.GotoBottom()
+			return m, m.GotoBottom()
 		case key.Matches(msg, m.KeyMap.VisualMode):
 			m.SetVisualMode(!m.visualMode)
 		case msg.Type == tea.KeyEsc:
-			m.visualMode = false
+			m.SetVisualMode(false)
 		}
 	}
 
@@ -608,7 +610,12 @@ func (m *Model) SetVisualMode(b bool) {
 	}
 }
 
-func (m *Model) MoveUp(n int) {
+func (m *Model) SetOnMove(onMove func(identifier string) tea.Cmd) {
+	m.onMove = onMove
+}
+
+func (m *Model) MoveUp(n int) tea.Cmd {
+	initial := m.cursor
 	m.cursor = clamp(m.cursor-n, 0, len(m.rows)-1)
 	if m.visualModeEnabled {
 		if !m.visualMode {
@@ -620,9 +627,15 @@ func (m *Model) MoveUp(n int) {
 	if m.cursor < m.start {
 		m.start = clamp(m.start-n, 0, len(m.rows)-m.itemsHeight)
 	}
+
+	if m.onMove != nil && m.cursor != initial {
+		return m.onMove(m.SelectedRow())
+	}
+	return nil
 }
 
-func (m *Model) MoveDown(n int) {
+func (m *Model) MoveDown(n int) tea.Cmd {
+	initial := m.cursor
 	m.cursor = clamp(m.cursor+n, 0, len(m.rows)-1)
 	if m.visualModeEnabled {
 		if !m.visualMode {
@@ -634,14 +647,19 @@ func (m *Model) MoveDown(n int) {
 	if m.cursor >= m.itemsHeight+m.start {
 		m.start = clamp(m.start+n, 0, len(m.rows)-m.itemsHeight)
 	}
+
+	if m.onMove != nil && m.cursor != initial {
+		return m.onMove(m.SelectedRow())
+	}
+	return nil
 }
 
-func (m *Model) GotoTop() {
-	m.MoveUp(m.cursor)
+func (m *Model) GotoTop() tea.Cmd {
+	return m.MoveUp(m.cursor)
 }
 
-func (m *Model) GotoBottom() {
-	m.MoveDown(len(m.rows))
+func (m *Model) GotoBottom() tea.Cmd {
+	return m.MoveDown(len(m.rows))
 }
 
 func (m Model) headersView() string {

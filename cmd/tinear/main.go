@@ -32,12 +32,14 @@ func main() {
 	f, err := tea.LogToFile("tinear.log", "DEBUG")
 	if err != nil {
 		slog.Error("failed to setup logger", slog.Any("error", err))
+		return
 	}
 	defer f.Close()
 
 	store, err := store.New("db")
 	if err != nil {
 		slog.Error("failed to setup store", slog.Any("error", err))
+		return
 	}
 
 	client := client.New(initLinearClient())

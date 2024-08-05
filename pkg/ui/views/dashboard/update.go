@@ -1,8 +1,8 @@
 package dashboard
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"os/exec"
 	"runtime"
 	"time"
@@ -12,112 +12,96 @@ import (
 	"github.com/sayedmurtaza24/tinear/pkg/store"
 )
 
+const projectsTableWidth = 25
+
+func forceUpdate() tea.Msg {
+	return struct{}{}
+}
+
 func returnError(err error) tea.Cmd {
 	return func() tea.Msg { return err }
 }
 
 func (m *Model) handleSortMode(key tea.KeyMsg) tea.Cmd {
-	if m.filterMode {
-		return nil
-	}
+	switch m.focus.current() {
+	case FocusIssues:
+		if key.String() != "s" {
+			return nil
+		}
+		onPop := tea.Batch(
+			func() tea.Msg {
+				m.table.Focus()
+				m.updateTableCols()
+				return nil
+			},
+			m.updateIssues(),
+		)
 
-	if !m.sortMode {
-		if key.String() == "s" {
-			m.sortMode = true
+		if m.focus.push(FocusSort, onPop) {
 			m.table.Blur()
 			m.updateTableCols()
 		}
-		return nil
+
+	case FocusSort:
+		mappings := map[string]store.SortMode{
+			"p": store.SortModeProject,
+			"t": store.SortModeTitle,
+			"a": store.SortModeAssignee,
+			"e": store.SortModeState,
+			"r": store.SortModePrio,
+			"g": store.SortModeAge,
+			"m": store.SortModeTeam,
+			"s": store.SortModeSmart,
+		}
+
+		sortMode, ok := mappings[key.String()]
+		if !ok {
+			return nil
+		}
+
+		err := m.store.SetSortMode(sortMode)
+		if err != nil {
+			return returnError(err)
+		}
+
+		return m.focus.pop()
 	}
-
-	if key.Type == tea.KeyEscape {
-		m.sortMode = false
-		m.table.Focus()
-		m.updateTableCols()
-
-		return m.updateIssues()
-	}
-
-	mappings := map[string]store.SortMode{
-		"p": store.SortModeProject,
-		"t": store.SortModeTitle,
-		"a": store.SortModeAssignee,
-		"e": store.SortModeState,
-		"r": store.SortModePrio,
-		"g": store.SortModeAge,
-		"m": store.SortModeTeam,
-		"s": store.SortModeSmart,
-	}
-
-	sortMode, ok := mappings[key.String()]
-	if !ok {
-		return nil
-	}
-
-	err := m.store.SetSortMode(sortMode)
-	if err != nil {
-		return returnError(err)
-	}
-
-	m.sortMode = false
-	m.table.Focus()
-
-	m.updateTableCols()
-
-	return m.updateIssues()
+	return nil
 }
 
 func (m *Model) handleFilter(key tea.KeyMsg) (cmd tea.Cmd) {
-	if m.sortMode {
-		return nil
-	}
-
-	if !m.filterMode {
-		if key.Type == tea.KeyEsc && len(m.input.Value()) > 0 && !m.table.VisualMode() {
-			m.input.SetValue("")
-
-			return tea.Batch(
-				cmd,
-				m.updateIssues(),
-			)
+	switch m.focus.current() {
+	case FocusIssues:
+		onPop := func() tea.Msg {
+			if m.input.Value() == "/" {
+				m.input.SetValue("")
+			}
+			m.input.Blur()
+			return m.updateIssues()()
 		}
 
 		if key.String() == "/" {
-			m.filterMode = true
-			m.input.Focus()
-			m.input.SetValue("")
-
-			m.input, cmd = m.input.Update(key)
-
-			return cmd
+			if m.focus.push(FocusFilter, onPop) {
+				m.input.SetValue("")
+				m.input.Focus()
+				m.input, cmd = m.input.Update(key)
+				return cmd
+			}
+		}
+	case FocusFilter:
+		if key.Type == tea.KeyEnter {
+			return m.focus.pop()
 		}
 
-		return nil
+		m.input, cmd = m.input.Update(key)
+
+		return tea.Batch(cmd, m.updateIssues(withDebounce()))
 	}
-
-	backspaced := (key.Type == tea.KeyBackspace && m.input.Value() == "/")
-	escaped := key.Type == tea.KeyEscape
-	applied := key.Type == tea.KeyEnter
-
-	if escaped || backspaced || (applied && m.input.Value() == "/") {
-		m.input.SetValue("")
-	}
-	if backspaced || escaped || applied {
-		m.filterMode = false
-		m.input.Blur()
-		return m.updateIssues()
-	}
-
-	m.input, cmd = m.input.Update(key)
-
-	return tea.Batch(
-		cmd,
-		m.updateIssues(),
-	)
+	return nil
 }
 
 func (m *Model) handleBookmark(key tea.KeyMsg) tea.Cmd {
-	if m.sortMode || m.filterMode {
+	if m.focus.current() != FocusIssues {
 		return nil
 	}
 
@@ -134,11 +118,16 @@ func (m *Model) handleBookmark(key tea.KeyMsg) tea.Cmd {
 
 	m.table.SetVisualMode(false)
 
-	return m.updateIssues()
+	var selected string
+	if len(selectedIssues) == 1 {
+		selected = selectedIssues[0]
+	}
+
+	return m.updateIssues(withSelected(selected))
 }
 
 func (m *Model) handleOpen(key tea.KeyMsg) tea.Cmd {
-	if m.sortMode || m.filterMode || m.table.VisualMode() {
+	if m.focus.current() != FocusIssues && m.focus.current() != FocusHover {
 		return nil
 	}
 
@@ -171,68 +160,269 @@ func (m *Model) handleOpen(key tea.KeyMsg) tea.Cmd {
 	linearBaseURL := "https://linear.app"
 	urlKey := m.store.Current().Org.URLKey
 
-	url := fmt.Sprintf("%s/%s/issue/%s", linearBaseURL, urlKey, issue.Identifier)
-
-	open(url)
+	open(fmt.Sprintf("%s/%s/issue/%s", linearBaseURL, urlKey, issue.Identifier))
 
 	return nil
 }
 
 func (m *Model) handleHover(key tea.KeyMsg) tea.Cmd {
-	if key.String() != "K" {
-		m.hovered = nil
-		if !m.table.Focused() {
-			m.table.Focus()
+	switch m.focus.current() {
+	case FocusIssues:
+		if key.String() != "K" {
+			return nil
 		}
-		return nil
-	}
+		onPop := func() tea.Msg {
+			m.hovered = nil
+			m.table.Focus()
+			return forceUpdate()
+		}
+		if m.focus.push(FocusHover, onPop) {
+			issue, err := m.store.Issue(m.table.SelectedRow())
+			if err != nil {
+				return returnError(err)
+			}
+			m.hovered = issue
+			m.table.Blur()
+		}
 
-	if m.filterMode || m.sortMode {
-		return nil
+	case FocusHover:
+		if key.String() == "o" || key.Type == tea.KeyEsc {
+			return nil
+		}
+		return m.focus.pop()
 	}
-
-	issue, err := m.store.Issue(m.table.SelectedRow())
-	if err != nil {
-		return returnError(err)
-	}
-
-	m.hovered = issue
-	m.table.Blur()
 
 	return nil
 }
 
-type updateIssuesMsg []store.Issue
+func (m *Model) handleClose(key tea.KeyMsg) tea.Cmd {
+	if m.focus.current() != FocusIssues {
+		return nil
+	}
 
-func (m *Model) updateIssues() tea.Cmd {
+	if key.String() != "q" {
+		return nil
+	}
+
+	return tea.Quit
+}
+
+func (m *Model) handleFocusStack(key tea.KeyMsg) tea.Cmd {
+	if key.Type != tea.KeyEscape {
+		return nil
+	}
+	if m.input.Value() != "" {
+		m.input.SetValue("")
+		return m.updateIssues()
+	}
+	return m.focus.pop()
+}
+
+func (m *Model) handleProjectSelection(key tea.KeyMsg) tea.Cmd {
+	if m.focus.current() != FocusProjects {
+		return nil
+	}
+
+	if key.Type != tea.KeyEnter {
+		return nil
+	}
+
+	projects, err := m.store.Projects()
+	if err != nil {
+		return returnError(err)
+	}
+
+	var selectedProject, currProject *store.Project
+	for _, prj := range projects {
+		if prj.ID == m.prjTable.SelectedRow() {
+			selectedProject = &prj
+		}
+	}
+	if selectedProject == nil {
+		// NOTE: shouldn't really happen
+		return tea.Quit
+	}
+
+	currProject = m.store.Current().Project
+
+	if currProject == nil || currProject.ID != selectedProject.ID {
+		m.store.SetProject(selectedProject)
+	}
+
+	shiftFocus := func() tea.Msg {
+		m.prjTable.Focus()
+		m.table.Blur()
+		return nil
+	}
+	onPop := tea.Batch(shiftFocus, m.updateIssues())
+
+	if m.focus.push(FocusIssues, onPop) {
+		m.prjTable.Blur()
+		m.table.Focus()
+	}
+
+	return m.updateIssues()
+}
+
+func (m *Model) handleViews(key tea.KeyMsg) tea.Cmd {
+	if key.Type != tea.KeyTab {
+		return nil
+	}
+
+	if m.focus.current() != FocusIssues && m.focus.current() != FocusProjects {
+		return nil
+	}
+
+	m.table.SetLoading(true)
+
+	projects, err := m.store.Projects()
+	if err != nil {
+		return returnError(err)
+	}
+
+	switch m.currView {
+	case ViewAll:
+		m.currView = ViewProject
+		m.focus = []focusStackItem{{mode: FocusProjects}}
+
+		if len(projects) > 0 {
+			m.store.SetProject(&projects[0])
+		}
+		m.table.SetWidth(m.width - projectsTableWidth)
+		m.prjTable.SetWidth(projectsTableWidth)
+		m.prjTable.Focus()
+		m.table.Blur()
+		m.prjTable.SetOnMove(func(selectedID string) tea.Cmd {
+			var selectedProject *store.Project
+			for _, prj := range projects {
+				if prj.ID == selectedID {
+					selectedProject = &prj
+				}
+			}
+			if selectedProject != nil {
+				m.store.SetProject(selectedProject)
+			}
+			return m.updateIssues(withCursorAt(0), withColumnsUpdate())
+		})
+
+		return m.updateIssues(withColumnsUpdate())
+	case ViewProject:
+		m.currView = ViewAll
+		m.focus = []focusStackItem{{mode: FocusIssues}}
+
+		m.store.SetProject(nil)
+		m.table.SetWidth(m.width)
+		m.table.Focus()
+		m.prjTable.Blur()
+		m.prjTable.SetOnMove(nil)
+
+		return m.updateIssues(withColumnsUpdate())
+	}
+
+	return nil
+}
+
+type (
+	updateIssuesMsg struct {
+		issues        []store.Issue
+		selected      string
+		cursor        int
+		updateColumns func()
+	}
+	issueUpdateOpt struct {
+		selected      string
+		cursor        int
+		debounce      bool
+		updateColumns bool
+	}
+	issueUpdateOptFunc func(opt *issueUpdateOpt)
+)
+
+func withSelected(selected string) issueUpdateOptFunc {
+	return func(opt *issueUpdateOpt) {
+		opt.selected = selected
+	}
+}
+
+func withDebounce() issueUpdateOptFunc {
+	return func(opt *issueUpdateOpt) {
+		opt.debounce = true
+	}
+}
+
+func withCursorAt(cursor int) issueUpdateOptFunc {
+	return func(opt *issueUpdateOpt) {
+		opt.cursor = cursor
+	}
+}
+
+func withColumnsUpdate() issueUpdateOptFunc {
+	return func(opt *issueUpdateOpt) {
+		opt.updateColumns = true
+	}
+}
+
+func (m *Model) updateIssues(opts ...issueUpdateOptFunc) tea.Cmd {
+	options := issueUpdateOpt{cursor: -1}
+
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	return func() tea.Msg {
-		m.table.SetLoading(false)
-
 		var issues []store.Issue
 		var err error
 
 		currentInput := m.input.Value()
 
-		// debounce
-		time.Sleep(150 * time.Millisecond)
+		if options.debounce {
+			time.Sleep(150 * time.Millisecond)
 
-		if currentInput != m.input.Value() {
-			return nil
+			if currentInput != m.input.Value() {
+				return nil
+			}
 		}
 
 		if len(m.input.Value()) > 3 {
 			issues, err = m.store.SearchIssues(m.input.Value()[1:])
 			if err != nil {
+				if errors.Is(err, store.ErrNoOrgSelected) {
+					return nil
+				}
 				return err
 			}
 		} else {
 			issues, err = m.store.Issues()
 			if err != nil {
+				if errors.Is(err, store.ErrNoOrgSelected) {
+					return nil
+				}
 				return err
 			}
 		}
 
-		return updateIssuesMsg(issues)
+		var projects []store.Project
+
+		if options.updateColumns {
+			projects, err = m.store.Projects()
+			if err != nil {
+				return err
+			}
+		}
+
+		updateCols := func() {
+			if options.updateColumns {
+				m.updateTableCols()
+				m.updateProjectsTable(projects)
+			}
+		}
+
+		return updateIssuesMsg{
+			issues:        issues,
+			selected:      options.selected,
+			cursor:        options.cursor,
+			updateColumns: updateCols,
+		}
 	}
 }
 
@@ -242,18 +432,29 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case error:
-		log.Println(msg)
-		return m, tea.Quit
+		m.err = msg
+		return m, nil
 
 	case tea.KeyMsg:
-		cmds = append(cmds, m.handleSortMode(msg))
 		cmds = append(cmds, m.handleFilter(msg))
 		cmds = append(cmds, m.handleBookmark(msg))
 		cmds = append(cmds, m.handleHover(msg))
 		cmds = append(cmds, m.handleOpen(msg))
+		cmds = append(cmds, m.handleSortMode(msg))
+		cmds = append(cmds, m.handleClose(msg))
+		cmds = append(cmds, m.handleFocusStack(msg))
+		cmds = append(cmds, m.handleProjectSelection(msg))
+		cmds = append(cmds, m.handleViews(msg))
 
 	case updateIssuesMsg:
-		m.updateTableRows(msg)
+		msg.updateColumns()
+		m.updateTableRows(msg.issues)
+		if msg.selected != "" {
+			m.table.SetSelectedRow(msg.selected)
+		} else if msg.cursor != -1 {
+			m.table.SetCursor(msg.cursor)
+		}
+		m.table.SetLoading(false)
 
 	case client.GetOrgRes:
 		changed, err := m.store.StoreOrg(msg.Result)
@@ -269,10 +470,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.client.GetProjects(nil),
 				m.client.GetTeams(nil),
 				m.client.GetUsers(nil),
-				m.client.GetIssues(m.store.Current().SyncedAt, nil),
+				m.client.GetIssues(m.store.Current().Org.SyncedAt, nil),
 			))
 		} else {
-			cmds = append(cmds, m.client.GetIssues(m.store.Current().SyncedAt, nil))
+			cmds = append(cmds, m.client.GetIssues(m.store.Current().Org.SyncedAt, nil))
 
 			issues, err := m.store.Issues()
 			if err != nil {
@@ -310,7 +511,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case client.GetIssuesRes:
 		if msg.After != nil {
-			cmds = append(cmds, m.client.GetIssues(m.store.Current().SyncedAt, msg.After))
+			cmds = append(cmds, m.client.GetIssues(m.store.Current().Org.SyncedAt, msg.After))
 		}
 		err := m.store.StoreIssues(msg.Result)
 		if err != nil {
@@ -327,14 +528,26 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
-		m.table.SetWidth(msg.Width)
-		m.table.SetHeight(msg.Height - 5)
+		switch m.currView {
+		case ViewAll:
+			m.table.SetWidth(msg.Width)
+		case ViewProject:
+			m.prjTable.SetWidth(projectsTableWidth)
+			m.table.SetWidth(msg.Width - projectsTableWidth)
+		}
+		m.table.SetHeight(msg.Height - 4)
+		m.prjTable.SetHeight(msg.Height - 5)
 		m.width = msg.Width
 		m.height = msg.Height
 	}
 
-	if !m.filterMode {
+	if m.focus.current() == FocusIssues {
 		m.table, cmd = m.table.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	if m.focus.current() == FocusProjects {
+		m.prjTable, cmd = m.prjTable.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 

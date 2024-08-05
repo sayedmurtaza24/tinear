@@ -93,10 +93,10 @@ func (c *Client) GetIssues(lastSync time.Time, after *string) tea.Cmd {
 			}
 
 			is := store.Issue{
-				ID:         iss.GetID(),
-				Identifier: iss.GetIdentifier(),
-				Title:      iss.GetTitle(),
-				Desc:       coalece(iss.Description, ""),
+				ID:          iss.GetID(),
+				Identifier:  iss.GetIdentifier(),
+				Title:       iss.GetTitle(),
+				Description: coalece(iss.Description, ""),
 				Assignee: store.User{
 					ID:          iss.GetAssignee().GetID(),
 					Name:        iss.GetAssignee().GetName(),

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
@@ -72,7 +73,7 @@ func (m *Model) updateTableCols() {
 	col := color.Simple("#bbb")
 	colH := color.Simple("#3f98b5")
 
-	if !m.sortMode {
+	if m.focus.current() != FocusSort {
 		colH = col
 	}
 
@@ -87,39 +88,59 @@ func (m *Model) updateTableCols() {
 		table.NewColumn(text.KeymapText("team", col, 3, colH, text.B), 1.5, table.WithMaxWidth(15)),
 		table.NewColumn(text.Colored("labels", col, text.B), 3, table.WithMaxWidth(40)),
 	}
+	prjColumn := []*table.Column{
+		table.NewColumn(text.Colored("projects", col, text.B), 1, table.WithAutoFill()),
+	}
 
-	m.table.SetColumns(cols)
+	if m.currView == ViewProject {
+		m.table.SetColumns(cols[1:])
+	} else {
+		m.table.SetColumns(cols)
+	}
+
+	m.prjTable.SetColumns(prjColumn)
 }
 
-func (m *Model) renderTopBar() string {
-	tinearLogo := text.Chip(
-		"Tinear",
+func (m *Model) renderStatusBar() string {
+	var mode, c string
+	switch m.focus.current() {
+	case FocusFilter:
+		mode = "filter"
+		c = "#752822"
+	case FocusSort:
+		mode = "sort"
+		c = "#82783c"
+	case FocusHover:
+		mode = "hover"
+		c = "#40394d"
+	case FocusVisual:
+		mode = "visual"
+		c = "#406391"
+	default:
+		mode = "tinear"
+		c = "#2D4F67"
+	}
+
+	modeChip := text.Chip(
+		mode,
 		color.Simple("#ccc"),
-		color.Simple("#2D4F67"),
-		text.Arrow("#527269", false),
+		color.Simple(c),
 		text.B,
 	).Focused()
 
-	orgName := text.Chip(
-		m.store.Current().Me.Name,
-		color.Simple("#000"),
-		color.Simple("#527269"),
-		text.Arrow("#76946A", false),
-	).Focused()
-
-	me := text.Chip(
-		m.store.Current().Org.Name,
-		color.Simple("#000"),
-		color.Simple("#76946A"),
-		text.Arrow("", false),
-	).Focused()
+	name := fmt.Sprintf(
+		"  %s ⟩ %s",
+		m.store.Current().Me.DisplayName,
+		strings.ToLower(m.store.Current().Org.Name),
+	)
+	orgName := text.Colored(name, color.Simple("#777")).Focused()
 
 	var syncedAt string
 	if m.syncing {
 		syncedAt = text.Colored("syncing...", color.Simple("#444")).Focused()
 	} else {
 		syncedAt = text.Colored(
-			fmt.Sprintf("synced at %s", m.store.Current().SyncedAt.Format(time.DateTime)), color.Simple("#444"),
+			fmt.Sprintf("synced at %s", m.store.Current().Org.SyncedAt.Format(time.DateTime)), color.Simple("#444"),
 		).Focused()
 	}
 
@@ -128,14 +149,10 @@ func (m *Model) renderTopBar() string {
 	}
 
 	return pad(layouts.SpaceBetween(
-		m.width-2,
-		tinearLogo+orgName+me,
+		m.width-3,
+		modeChip+orgName,
 		syncedAt,
 	), 1)
-}
-
-func (m *Model) renderIssues() string {
-	return m.table.View()
 }
 
 func (m *Model) updateTableRows(issues []store.Issue) {
@@ -156,8 +173,8 @@ func (m *Model) updateTableRows(issues []store.Issue) {
 	}
 
 	for _, issue := range issues {
-		titleNormal := text.Focusable(text.Colored(issue.Title, color.Focusable("#eee", "#888").Darken(0.2)))
-		titleSelected := text.Focusable(text.Colored(issue.Title, color.Focusable("#eee", "#888").Brighten(0.2)))
+		titleNormal := text.Colored(issue.Title, color.Focusable("#eee", "#888").Darken(0.2))
+		titleSelected := text.Colored(issue.Title, color.Focusable("#eee", "#888").Brighten(0.2))
 
 		var projectNormal, projectSelected text.Focusable
 		if issue.Project.Name != "" {
@@ -219,19 +236,25 @@ func (m *Model) updateTableRows(issues []store.Issue) {
 		pinnedNormal := text.Colored(pinnedText, color.Focusable("#5fa0b8", "#888"), text.B)
 		pinnedSelected := text.Colored(pinnedText, color.Focusable("#5fa0b8", "#888").Brighten(0.2), text.B)
 
+		items := []table.RowItem{
+			{Normal: projectNormal, Selected: projectSelected},
+			{Normal: titleNormal, Selected: titleSelected},
+			{Normal: pinnedNormal, Selected: pinnedSelected},
+			{Normal: assigneeNormal, Selected: assigneeSelected},
+			{Normal: stateNormal, Selected: stateSelected},
+			{Normal: priorityNormal, Selected: prioritySelected},
+			{Normal: ageNormal, Selected: ageSelected},
+			{Normal: teamNormal, Selected: teamSelected},
+			{Normal: labelsNormalT, Selected: labelsSelectedT},
+		}
+
+		if m.currView == ViewProject {
+			items = items[1:]
+		}
+
 		row := &table.Row{
 			Identifier: issue.ID,
-			Items: []table.RowItem{
-				{Normal: projectNormal, Selected: projectSelected},
-				{Normal: titleNormal, Selected: titleSelected},
-				{Normal: pinnedNormal, Selected: pinnedSelected},
-				{Normal: assigneeNormal, Selected: assigneeSelected},
-				{Normal: stateNormal, Selected: stateSelected},
-				{Normal: priorityNormal, Selected: prioritySelected},
-				{Normal: ageNormal, Selected: ageSelected},
-				{Normal: teamNormal, Selected: teamSelected},
-				{Normal: labelsNormalT, Selected: labelsSelectedT},
-			},
+			Items:      items,
 		}
 
 		rows = append(rows, row)
@@ -240,18 +263,53 @@ func (m *Model) updateTableRows(issues []store.Issue) {
 	m.table.SetRows(rows)
 }
 
+func (m *Model) updateProjectsTable(projects []store.Project) {
+	rows := make([]*table.Row, 0, len(projects))
+
+	for _, project := range projects {
+		normal := text.Colored(project.Name, color.Focusable(project.Color, "#888"))
+		selected := text.Colored(project.Name, color.Focusable(project.Color, "#888").Brighten(0.2))
+
+		row := &table.Row{
+			Identifier: project.ID,
+			Items: []table.RowItem{
+				{Normal: normal, Selected: selected},
+			},
+		}
+		rows = append(rows, row)
+	}
+
+	m.prjTable.SetRows(rows)
+}
+
 func (m *Model) View() string {
-	header := m.renderTopBar()
-	issues := m.renderIssues()
-	filter := m.input.View()
+	if m.err != nil {
+		return m.err.Error()
+	}
+
+	pad := func(s string, pad ...int) string {
+		return lipgloss.NewStyle().Padding(pad...).Render(s)
+	}
+
+	header := pad(m.renderStatusBar(), 0, 1)
+	issues := m.table.View()
+
+	if m.currView == ViewProject {
+		issues = lipgloss.JoinHorizontal(
+			lipgloss.Left,
+			m.prjTable.View(),
+			issues,
+		)
+	}
+
+	filter := pad(m.input.View(), 0, 2)
 
 	mainContent := lipgloss.JoinVertical(
 		lipgloss.Left,
 		"",
-		header,
-		"",
 		issues,
 		"",
+		header,
 		filter,
 	)
 
@@ -259,14 +317,14 @@ func (m *Model) View() string {
 		return mainContent
 	}
 
-	floatingContent := hover.HoverIssue(*m.hovered, m.width-2, m.height-1, true)
+	floatingContent := hover.HoverIssue(*m.hovered, m.width-2, m.height-3, true)
 	floatingContentHeight := lipgloss.Height(floatingContent)
 
-	issueOffset := m.table.TopOffset() + lipgloss.Height(header) + 3
+	issueOffset := m.table.TopOffset() + lipgloss.Height(header) + 1
 
 	// if too close to the bottom
 	if floatingContentHeight > m.height-issueOffset-5 {
-		issueOffset = max(issueOffset-floatingContentHeight-1, 2)
+		issueOffset = max(issueOffset-floatingContentHeight-1, 3)
 	}
 
 	return layouts.PlaceOverlay(
