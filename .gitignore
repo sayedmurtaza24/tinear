@@ -2,8 +2,6 @@ tinear.log
 tinear.pprof
 gqlgenc.yml
 tinear
-linear/models
-linear/client.go
 db
 db-shm
 db-wal
