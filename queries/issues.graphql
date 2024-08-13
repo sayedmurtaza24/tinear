@@ -46,14 +46,8 @@ query GetIssues($filter: IssueFilter, $after: String, $first: Int = 50) {
   }
 }
 
-mutation UpdateIssue($input: IssueUpdateInput!, $issueUpdateId: String!) {
-  issueUpdate(input: $input, id: $issueUpdateId) {
-    success
-  }
-}
-
-mutation UnassignIssue($issueUpdateId: String!) {
-  issueUpdate(input: { assigneeId: null }, id: $issueUpdateId) {
+mutation BatchUpdateIssues($input: IssueUpdateInput!, $ids: [UUID!]!) {
+  issueBatchUpdate(input: $input, ids: $ids) {
     success
   }
 }

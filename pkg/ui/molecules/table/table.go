@@ -468,6 +468,22 @@ func (m *Model) TopOffset() int {
 	return m.cursor - m.start + lipgloss.Height(m.headersView())
 }
 
+func (m *Model) ColumnOffset(columnTitle string) int {
+	var found bool
+	var offset int
+	for _, col := range m.cols {
+		if col.title.Raw() == columnTitle {
+			found = true
+			break
+		}
+		offset += col.calculatedWidth + 2
+	}
+	if !found {
+		return -1
+	}
+	return offset + 1
+}
+
 func (m *Model) Loading() bool {
 	return m.loading
 }
@@ -599,7 +615,13 @@ func (m Model) Cursor() int {
 }
 
 func (m *Model) SetCursor(n int) {
-	m.cursor = clamp(n, 0, len(m.rows)-1)
+	if m.cursor == n {
+		return
+	} else if m.cursor > n {
+		m.MoveUp(m.cursor - n)
+	} else if m.cursor < n {
+		m.MoveDown(n - m.cursor)
+	}
 }
 
 func (m *Model) SetVisualMode(b bool) {
@@ -625,7 +647,7 @@ func (m *Model) MoveUp(n int) tea.Cmd {
 	}
 
 	if m.cursor < m.start {
-		m.start = clamp(m.start-n, 0, len(m.rows)-m.itemsHeight)
+		m.start = max(clamp(m.start-n, 0, len(m.rows)-m.itemsHeight), 0)
 	}
 
 	if m.onMove != nil && m.cursor != initial {
@@ -645,7 +667,7 @@ func (m *Model) MoveDown(n int) tea.Cmd {
 	}
 
 	if m.cursor >= m.itemsHeight+m.start {
-		m.start = clamp(m.start+n, 0, len(m.rows)-m.itemsHeight)
+		m.start = max(clamp(m.start+n, 0, len(m.rows)-m.itemsHeight), 0)
 	}
 
 	if m.onMove != nil && m.cursor != initial {

@@ -97,7 +97,5 @@ func New(
 		Width(width).
 		Render(content)
 
-	return bgStyle.Render(
-		lipgloss.JoinVertical(lipgloss.Left, top, bottom),
-	)
+	return bgStyle.Render(lipgloss.JoinVertical(lipgloss.Left, top, bottom))
 }

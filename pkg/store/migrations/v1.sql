@@ -51,6 +51,7 @@ CREATE TABLE states (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
     color TEXT NOT NULL,
+    team_id TEXT NOT NULL,
     org_id TEXT NOT NULL
 );
 
@@ -65,7 +66,7 @@ CREATE TABLE issues (
     description TEXT,
     labels BLOB,
     assignee_id TEXT,
-    project_id TEXT,
+    project_id TEXT NOT NULL,
     pinned BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP,

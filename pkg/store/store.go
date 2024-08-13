@@ -55,6 +55,10 @@ func removeDuplicatesAndEmpties[T idGetter](list []T) []T {
 	return res
 }
 
+func getEmptyProjectID(orgID string) string {
+	return fmt.Sprintf("empty-project-%s", orgID[:6])
+}
+
 type StoreState struct {
 	Search    string
 	Project   *Project
@@ -144,6 +148,15 @@ func (s *Store) StoreOrg(org Org) (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("couldn't select active org: %w", err)
 		}
+
+		_, err = s.db.Exec(`
+			INSERT INTO projects (id, name, color, org_id)
+			VALUES (?, '(No Project)', '#777', (SELECT id FROM orgs WHERE active = TRUE))
+			ON CONFLICT (id) DO NOTHING
+		`, getEmptyProjectID(org.ID))
+		if err != nil {
+			return false, fmt.Errorf("couldn't insert empty project for org: %w", err)
+		}
 	}
 	return changed, nil
 }
@@ -172,11 +185,10 @@ func (s *Store) StoreUsers(users []User) error {
 		return ErrNoOrgSelected
 	}
 
+	users = removeDuplicatesAndEmpties(users)
 	if len(users) == 0 {
 		return nil
 	}
-
-	users = removeDuplicatesAndEmpties(users)
 
 	_, err := s.db.NamedExec(fmt.Sprintf(`
 		INSERT INTO users (id, name, display_name, email, is_me, org_id) 
@@ -209,7 +221,7 @@ func (s *Store) States() ([]State, error) {
 
 	var states []State
 	err := s.db.Select(&states, fmt.Sprintf(`
-		SELECT id, name, color 
+		SELECT id, name, color, team_id 
 		FROM states 
 		WHERE org_id = %s`, currentOrg),
 	)
@@ -225,18 +237,19 @@ func (s *Store) StoreStates(states []State) error {
 		return ErrNoOrgSelected
 	}
 
+	states = removeDuplicatesAndEmpties(states)
 	if len(states) == 0 {
 		return nil
 	}
 
 	_, err := s.db.NamedExec(fmt.Sprintf(`
-		INSERT INTO states (id, name, color, org_id)
-		VALUES (:id, :name, :color, %s)
+		INSERT INTO states (id, name, color, team_id, org_id)
+		VALUES (:id, :name, :color, :team_id, %s)
 		ON CONFLICT (id) DO UPDATE 
 		SET name = EXCLUDED.name, 
 			color = EXCLUDED.color
 		`, currentOrg),
-		removeDuplicatesAndEmpties(states),
+		states,
 	)
 	if err != nil {
 		return fmt.Errorf("couldn't store states: %w", err)
@@ -247,7 +260,7 @@ func (s *Store) StoreStates(states []State) error {
 
 func (s *Store) Teams() ([]Team, error) {
 	if s.current.Org.ID == "" {
-		return make([]Team, 0), nil
+		return nil, ErrNoOrgSelected
 	}
 
 	var teams []Team
@@ -290,14 +303,15 @@ func (s *Store) StoreTeams(teams []Team) error {
 
 func (s *Store) Projects() ([]Project, error) {
 	if s.current.Org.ID == "" {
-		return make([]Project, 0), nil
+		return nil, ErrNoOrgSelected
 	}
 
 	var projects []Project
 	err := s.db.Select(&projects, fmt.Sprintf(`
 		SELECT id, name, color 
 		FROM projects
-		WHERE org_id = %s`, currentOrg),
+		WHERE org_id = %s
+		ORDER BY name`, currentOrg),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't select projects: %w", err)
@@ -311,6 +325,7 @@ func (s *Store) StoreProjects(projects []Project) error {
 		return nil
 	}
 
+	projects = removeDuplicatesAndEmpties(projects)
 	if len(projects) == 0 {
 		return nil
 	}
@@ -321,8 +336,7 @@ func (s *Store) StoreProjects(projects []Project) error {
 		ON CONFLICT (id) DO UPDATE 
 		SET name = EXCLUDED.name, 
 			color = EXCLUDED.color
-		`, currentOrg),
-		removeDuplicatesAndEmpties(projects),
+		`, currentOrg), projects,
 	)
 	if err != nil {
 		return fmt.Errorf("couldn't store projects: %w", err)
@@ -372,9 +386,14 @@ func (s *Store) Issue(issueID string) (*Issue, error) {
 	return &issue, nil
 }
 
-func (s *Store) Issues() ([]Issue, error) {
+func (s *Store) Issues(issueIDs ...string) ([]Issue, error) {
 	if s.current.Org.ID == "" {
 		return nil, ErrNoOrgSelected
+	}
+
+	issueFilterQuery, args, err := s.getIssueFilter(issueIDs...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate issue filter query: %w", err)
 	}
 
 	query := fmt.Sprintf(`
@@ -385,6 +404,7 @@ func (s *Store) Issues() ([]Issue, error) {
 			states.id AS "state.id",
 			states.name AS "state.name",
 			states.color AS "state.color",
+			states.team_id AS "state.team_id",
 			teams.id AS "team.id",
 			teams.name AS "team.name",
 			teams.color AS "team.color",
@@ -402,16 +422,16 @@ func (s *Store) Issues() ([]Issue, error) {
 		LEFT JOIN projects ON issues.project_id = projects.id
 		LEFT JOIN teams ON issues.team_id = teams.id
 		LEFT JOIN states ON issues.state_id = states.id
-		WHERE %s orgs.active = TRUE AND (
+		WHERE %s %s orgs.active = TRUE AND (
 			states.name NOT IN ('Done', 'Canceled') OR 
 			updated_at > DATETIME(CURRENT_TIMESTAMP, '-14 days')
 		)
 		ORDER BY pinned = TRUE DESC, 
 			%s
-	`, s.getProjectFilter(), s.getSorter(false))
+	`, issueFilterQuery, s.getProjectFilter(), s.getSorter(false))
 
 	var issues []Issue
-	rows, err := s.db.Queryx(query)
+	rows, err := s.db.Queryx(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query issues: %w", err)
 	}
@@ -553,7 +573,7 @@ func (s *Store) StoreIssues(issues []Issue) error {
 		TeamID      string
 		StateID     string
 		AssigneeID  sql.Null[string]
-		ProjectID   sql.Null[string]
+		ProjectID   string
 		Pinned      bool
 		CreatedAt   time.Time
 		UpdatedAt   time.Time
@@ -562,6 +582,11 @@ func (s *Store) StoreIssues(issues []Issue) error {
 
 	var issueModels []issueModel
 	for _, issue := range issues {
+		projectID := issue.Project.ID
+		if projectID == "" {
+			projectID = getEmptyProjectID(s.current.Org.ID)
+		}
+
 		issueModels = append(issueModels, issueModel{
 			ID:          issue.ID,
 			Identifier:  issue.Identifier,
@@ -571,13 +596,10 @@ func (s *Store) StoreIssues(issues []Issue) error {
 			Priority:    issue.Priority,
 			TeamID:      issue.Team.ID,
 			StateID:     issue.State.ID,
+			ProjectID:   projectID,
 			AssigneeID: sql.Null[string]{
 				Valid: issue.Assignee.ID != "",
 				V:     issue.Assignee.ID,
-			},
-			ProjectID: sql.Null[string]{
-				Valid: issue.Project.ID != "",
-				V:     issue.Project.ID,
 			},
 			Pinned:     issue.Pinned,
 			CreatedAt:  issue.CreatedAt,
@@ -624,7 +646,7 @@ func (s *Store) StoreIssues(issues []Issue) error {
 	return nil
 }
 
-func (s *Store) ToggleBookmark(issueIDs ...string) error {
+func (s *Store) SetBookmark(issueIDs ...string) error {
 	if len(issueIDs) == 0 {
 		return nil
 	}
@@ -642,6 +664,44 @@ func (s *Store) ToggleBookmark(issueIDs ...string) error {
 	_, err = s.db.Exec(query, args...)
 	if err != nil {
 		return fmt.Errorf("couldn't toggle issue pin: %w", err)
+	}
+
+	return nil
+}
+
+type UpdateIssueField string
+
+const (
+	UpdateIssueFieldAssignee UpdateIssueField = "assignee_id"
+	UpdateIssueFieldPrio     UpdateIssueField = "priority"
+	UpdateIssueFieldProject  UpdateIssueField = "project_id"
+	UpdateIssueFieldTeam     UpdateIssueField = "team_id"
+	UpdateIssueFieldTitle    UpdateIssueField = "title"
+	UpdateIssueFieldState    UpdateIssueField = "state_id"
+)
+
+func (s *Store) UpdateIssues(field UpdateIssueField, value any, issueIDs ...string) error {
+	if len(issueIDs) == 0 {
+		return nil
+	}
+
+	if len(field) == 0 {
+		return nil
+	}
+
+	query, args, err := sqlx.In(
+		fmt.Sprintf(`UPDATE issues SET %s = ?, updated_at = ? WHERE id IN (?)`, field),
+		value,
+		time.Now(),
+		issueIDs,
+	)
+	if err != nil {
+		return fmt.Errorf("couldn't generate set assignee query: %w", err)
+	}
+
+	_, err = s.db.Exec(query, args...)
+	if err != nil {
+		return fmt.Errorf("couldn't set assignees: %w", err)
 	}
 
 	return nil
@@ -761,6 +821,13 @@ func (s *Store) getProjectFilter() string {
 		return ""
 	}
 	return fmt.Sprintf("issues.project_id = '%s' AND", s.current.Project.ID)
+}
+
+func (s *Store) getIssueFilter(issueIDs ...string) (string, []any, error) {
+	if len(issueIDs) == 0 {
+		return "TRUE AND", nil, nil
+	}
+	return sqlx.In("issues.id IN (?) AND", issueIDs)
 }
 
 func (s *Store) updateSearchIndex() error {

@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sayedmurtaza24/tinear/pkg/client"
 	"github.com/sayedmurtaza24/tinear/pkg/store"
+	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/input"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/table"
 )
 
@@ -17,6 +18,8 @@ const (
 	FocusSort
 	FocusFilter
 	FocusHover
+	FocusSelectorPre
+	FocusSelector
 )
 
 const (
@@ -24,9 +27,18 @@ const (
 	ViewProject
 )
 
+const (
+	SelectorModeNone selectorMode = iota
+	SelectorModeAssignee
+	SelectorModePriority
+	SelectorModeState
+	SelectorModeProject
+	SelectorModeTeam
+)
+
 var focusNextMap = map[focus][]focus{
 	FocusProjects: {FocusIssues},
-	FocusIssues:   {FocusVisual, FocusSort, FocusFilter, FocusHover},
+	FocusIssues:   {FocusVisual, FocusSort, FocusFilter, FocusHover, FocusSelector, FocusSelectorPre},
 }
 
 type (
@@ -35,10 +47,10 @@ type (
 		mode  focus
 		onPop tea.Cmd
 	}
-	focusStack []focusStackItem
-
-	view  int
-	Model struct {
+	focusStack   []focusStackItem
+	selectorMode int
+	view         int
+	Model        struct {
 		width   int
 		height  int
 		syncing bool
@@ -57,7 +69,11 @@ type (
 		table    table.Model
 		input    textinput.Model
 
-		err error
+		selector     input.Model
+		selectorMode selectorMode
+
+		err   error
+		debug string
 	}
 )
 
@@ -99,6 +115,8 @@ func New(store *store.Store, client *client.Client) *Model {
 
 	model.focus = []focusStackItem{{mode: FocusIssues}}
 
+	model.selector = input.New("assignee...", 25, 10, true)
+
 	return &model
 }
 
@@ -106,7 +124,8 @@ func (m *Model) Init() tea.Cmd {
 	m.updateTableCols()
 
 	return tea.Batch(
-		m.updateIssues(),
+		m.selector.Init(),
+		m.updateTables(),
 		m.table.SetLoading(m.store.Current().FirstTime),
 		m.client.GetOrg(),
 	)

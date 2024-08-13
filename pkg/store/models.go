@@ -25,9 +25,10 @@ type Project struct {
 }
 
 type State struct {
-	ID    string
-	Name  string
-	Color string
+	ID     string
+	Name   string
+	Color  string
+	TeamID string
 }
 
 func (state *State) position(name string, pos int) int {

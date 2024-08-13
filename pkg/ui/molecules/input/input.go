@@ -2,52 +2,54 @@ package input
 
 import (
 	"strings"
-	"sync"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/sayedmurtaza24/tinear/pkg/ui/atoms/box"
+	"github.com/sayedmurtaza24/tinear/pkg/ui/color"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/molecules/table"
 	"github.com/sayedmurtaza24/tinear/pkg/ui/text"
 )
 
+type Suggestion struct {
+	Identifier string
+	// WARN: has to be unique
+	Title string
+	Color string
+}
+
 type Model struct {
-	title       string
-	options     []string
-	input       textinput.Model
-	suggestions table.Model
-	width       int
+	title         string
+	options       []Suggestion
+	input         textinput.Model
+	suggestions   table.Model
+	width, height int
 }
 
-func (m *Model) CurrentSuggestion() string {
-	var current string
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer func() {
-			wg.Done()
-			recover()
-		}()
-
-		current = m.input.CurrentSuggestion()
-	}()
-
-	wg.Wait()
-
-	return current
+func (m *Model) Highlighted() *Suggestion {
+	for _, sug := range m.options {
+		if sug.Identifier == m.suggestions.SelectedRow() {
+			return &sug
+		}
+	}
+	return nil
 }
 
-func makeSuggestionRows(opts []string) []*table.Row {
+func makeSuggestionRows(opts []Suggestion) []*table.Row {
 	rows := []*table.Row{}
+
 	for _, opt := range opts {
+		var rowNormal text.Focusable
+		if opt.Color != "" {
+			rowNormal = text.Colored(opt.Title, color.Simple(opt.Color))
+		} else {
+			rowNormal = text.Plain(opt.Title)
+		}
+
 		rows = append(rows, &table.Row{
-			Identifier: opt,
-			Items: []table.RowItem{
-				{Normal: text.Plain(opt)},
-			},
+			Identifier: opt.Identifier,
+			Items:      []table.RowItem{{Normal: rowNormal}},
 		})
 	}
 
@@ -55,24 +57,18 @@ func makeSuggestionRows(opts []string) []*table.Row {
 }
 
 func New(
-	title string,
 	prompt string,
 	width, height int,
-	options []string,
-) *Model {
+	options bool,
+) Model {
 	var t table.Model
 
 	input := textinput.New()
 
-	if len(options) != 0 {
-		input.SetSuggestions(options)
-		input.ShowSuggestions = true
-
-		rows := makeSuggestionRows(options)
-
+	if options {
 		s := table.DefaultStyles()
 
-		s.SelectedBlurred = lipgloss.NewStyle().Background(lipgloss.Color("2")).Bold(true)
+		s.SelectedBlurred = lipgloss.NewStyle().Background(lipgloss.Color("#333")).Bold(true)
 		s.Header = lipgloss.NewStyle().Padding(0)
 
 		t = table.New(
@@ -80,53 +76,48 @@ func New(
 			table.WithColumns([]*table.Column{
 				table.NewColumn(text.Plain("Options"), 1, table.WithAutoFill()),
 			}),
-			table.WithRows(rows),
 			table.WithWidth(width-4),
-			table.WithHeight(height-5),
+			table.WithHeight(height),
 			table.WithFocused(false),
-			table.WithBackgroundColor("1", "#333"),
 			table.WithNoHeader(),
 		)
 	}
 
-	input.Width = width - 8
-
-	input.Placeholder = prompt
-
 	input.Prompt = " "
-
-	input.KeyMap.NextSuggestion.SetHelp("ctrl+p", "Next")
-	input.KeyMap.PrevSuggestion.SetHelp("ctrl+n", "Prev")
-	input.KeyMap.AcceptSuggestion.SetHelp("tab", "Accept")
-
+	input.Width = width - 6
+	input.Placeholder = prompt
 	input.PlaceholderStyle = lipgloss.NewStyle().
 		Background(lipgloss.Color("#000")).
 		Foreground(lipgloss.Color("#555"))
+	input.Focus()
 
-	return &Model{
+	return Model{
 		input:       input,
-		title:       title,
-		options:     options,
 		width:       width,
+		height:      height,
 		suggestions: t,
 	}
 }
 
-func (m *Model) Init() tea.Cmd {
-	return m.input.Focus()
+func (m Model) Init() tea.Cmd {
+	return nil
 }
 
-func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
-	var cmd tea.Cmd
+func (m *Model) Reset() {
+	m.input.SetValue("")
+	m.suggestions.SetCursor(0)
+}
 
-	m.input, cmd = m.input.Update(msg)
-	cmds = append(cmds, cmd)
+func (m *Model) SetSuggestions(suggestions []Suggestion) {
+	m.options = suggestions
+	m.suggestions.SetRows(makeSuggestionRows(suggestions))
+}
 
-	var available []string
+func (m *Model) filterSuggestions() {
+	var available []Suggestion
 	for _, a := range m.options {
 		if strings.HasPrefix(
-			strings.ToLower(a),
+			strings.ToLower(a.Title),
 			strings.ToLower(m.input.Value()),
 		) {
 			available = append(available, a)
@@ -134,17 +125,32 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	rows := makeSuggestionRows(available)
 	m.suggestions.SetRows(rows)
+}
 
-	current := m.CurrentSuggestion()
-	if current != "" {
-		m.suggestions.SetSelectedRow(current)
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+
+	m.input, cmd = m.input.Update(msg)
+	cmds = append(cmds, cmd)
+
+	m.filterSuggestions()
+
+	current := m.Highlighted()
+	if current != nil {
+		m.input.ShowSuggestions = true
+		m.input.SetSuggestions([]string{current.Title})
+	} else {
+		m.input.ShowSuggestions = false
+		m.suggestions.SetCursor(0)
 	}
 
-	if k, ok := msg.(tea.KeyMsg); ok && current != "" {
-		if key.Matches(k, m.input.KeyMap.NextSuggestion) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if msg.String() == "ctrl+n" {
 			m.suggestions.MoveDown(1)
 		}
-		if key.Matches(k, m.input.KeyMap.PrevSuggestion) {
+		if msg.String() == "ctrl+p" {
 			m.suggestions.MoveUp(1)
 		}
 	}
@@ -155,7 +161,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *Model) View() string {
+func (m Model) View() string {
 	input := lipgloss.NewStyle().
 		Background(lipgloss.Color("#000")).
 		Width(m.width - 4).
@@ -173,29 +179,15 @@ func (m *Model) View() string {
 		content = lipgloss.JoinVertical(
 			lipgloss.Left,
 			input,
-			"",
 			suggestions,
 		)
 	}
 
-	return box.New(
-		"Assign",
-		content,
-		m.width,
-		box.WithBorderStyle(
-			lipgloss.NewStyle().
-				Padding(1, 2, 1).
-				BorderForeground(lipgloss.Color("#444")).
-				Border(lipgloss.NormalBorder()),
-		),
-		box.WithLabelStyle(
-			lipgloss.NewStyle().
-				Foreground(lipgloss.Color("2")).
-				Padding(0, 1).
-				Bold(true),
-		),
-		box.WithBackground("#222"),
-	)
+	return lipgloss.NewStyle().
+		Height(m.height).
+		Border(lipgloss.RoundedBorder(), true).
+		BorderForeground(lipgloss.Color("#333")).
+		Render(content)
 }
 
 func (m *Model) ShortHelp() []key.Binding {

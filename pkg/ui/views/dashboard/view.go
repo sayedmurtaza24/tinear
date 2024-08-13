@@ -16,6 +16,8 @@ import (
 	"github.com/sayedmurtaza24/tinear/pkg/ui/text"
 )
 
+const projectsTableWidth = 25
+
 func ageTextAndColor(issue store.Issue) (string, color.Color) {
 	createdAgeDays := -time.Until(issue.CreatedAt).Hours() / 24
 	updatedAgeDays := -time.Until(issue.UpdatedAt).Hours() / 24
@@ -70,26 +72,31 @@ func ageTextAndColor(issue store.Issue) (string, color.Color) {
 }
 
 func (m *Model) updateTableCols() {
-	col := color.Simple("#bbb")
-	colH := color.Simple("#3f98b5")
+	defaultColor := color.Simple("#bbb")
 
-	if m.focus.current() != FocusSort {
-		colH = col
+	accentColor := func(sortable, assignable bool) color.Color {
+		if m.focus.current() == FocusSort && sortable {
+			return color.Simple("#3f98b5")
+		}
+		if m.focus.current() == FocusSelectorPre && assignable {
+			return color.Simple("#e3463b")
+		}
+		return defaultColor
 	}
 
 	cols := []*table.Column{
-		table.NewColumn(text.KeymapText("project", col, 0, colH, text.B), 3, table.WithMaxWidth(20)),
-		table.NewColumn(text.KeymapText("title", col, 0, colH, text.B), 10, table.WithAutoFill()),
-		table.NewColumn(text.Colored("", col), 0, table.WithMaxWidth(4), table.WithMinWidth(4)),
-		table.NewColumn(text.KeymapText("assignee", col, 0, colH, text.B), 1, table.WithMaxWidth(10)),
-		table.NewColumn(text.KeymapText("state", col, 4, colH, text.B), 1, table.WithMaxWidth(10)),
-		table.NewColumn(text.KeymapText("prio", col, 1, colH, text.B), 0.5, table.WithMaxWidth(10)),
-		table.NewColumn(text.KeymapText("age", col, 1, colH, text.B), 0.5, table.WithMaxWidth(6)),
-		table.NewColumn(text.KeymapText("team", col, 3, colH, text.B), 1.5, table.WithMaxWidth(15)),
-		table.NewColumn(text.Colored("labels", col, text.B), 3, table.WithMaxWidth(40)),
+		table.NewColumn(text.KeymapText("project", defaultColor, 0, accentColor(true, true), text.B), 3, table.WithMaxWidth(20)),
+		table.NewColumn(text.KeymapText("title", defaultColor, 0, accentColor(true, true), text.B), 10, table.WithAutoFill()),
+		table.NewColumn(text.Colored("", defaultColor), 0, table.WithMaxWidth(4), table.WithMinWidth(4)),
+		table.NewColumn(text.KeymapText("assignee", defaultColor, 0, accentColor(true, true), text.B), 1, table.WithMaxWidth(10)),
+		table.NewColumn(text.KeymapText("state", defaultColor, 4, accentColor(true, true), text.B), 1, table.WithMaxWidth(10)),
+		table.NewColumn(text.KeymapText("prio", defaultColor, 1, accentColor(true, true), text.B), 0.5, table.WithMaxWidth(10)),
+		table.NewColumn(text.KeymapText("age", defaultColor, 1, accentColor(true, false), text.B), 0.5, table.WithMaxWidth(6)),
+		table.NewColumn(text.KeymapText("team", defaultColor, 3, accentColor(true, true), text.B), 1.5, table.WithMaxWidth(15)),
+		table.NewColumn(text.KeymapText("labels", defaultColor, 0, accentColor(false, true), text.B), 3, table.WithMaxWidth(40)),
 	}
 	prjColumn := []*table.Column{
-		table.NewColumn(text.Colored("projects", col, text.B), 1, table.WithAutoFill()),
+		table.NewColumn(text.Colored("projects", defaultColor, text.B), 1, table.WithAutoFill()),
 	}
 
 	if m.currView == ViewProject {
@@ -287,6 +294,10 @@ func (m *Model) View() string {
 		return m.err.Error()
 	}
 
+	if m.debug != "" {
+		return m.debug
+	}
+
 	pad := func(s string, pad ...int) string {
 		return lipgloss.NewStyle().Padding(pad...).Render(s)
 	}
@@ -294,12 +305,17 @@ func (m *Model) View() string {
 	header := pad(m.renderStatusBar(), 0, 1)
 	issues := m.table.View()
 
+	issueOffset := m.table.TopOffset() + lipgloss.Height(header) + 1
+	assigneeColOffset := m.table.ColumnOffset("assignee")
+
 	if m.currView == ViewProject {
 		issues = lipgloss.JoinHorizontal(
 			lipgloss.Left,
 			m.prjTable.View(),
 			issues,
 		)
+
+		assigneeColOffset += projectsTableWidth
 	}
 
 	filter := pad(m.input.View(), 0, 2)
@@ -313,14 +329,20 @@ func (m *Model) View() string {
 		filter,
 	)
 
+	if m.focus.current() == FocusSelector {
+		mainContent = layouts.PlaceOverlay(
+			layouts.NewPosition(assigneeColOffset, issueOffset),
+			m.selector.View(),
+			mainContent,
+		)
+	}
+
 	if m.hovered == nil {
 		return mainContent
 	}
 
 	floatingContent := hover.HoverIssue(*m.hovered, m.width-2, m.height-3, true)
 	floatingContentHeight := lipgloss.Height(floatingContent)
-
-	issueOffset := m.table.TopOffset() + lipgloss.Height(header) + 1
 
 	// if too close to the bottom
 	if floatingContentHeight > m.height-issueOffset-5 {
