@@ -39,7 +39,7 @@ func WithSetTeam(teamID string) IssueUpdateOpt {
 	}
 }
 
-func WithTitle(title string) IssueUpdateOpt {
+func WithSetTitle(title string) IssueUpdateOpt {
 	return func(i *models.IssueUpdateInput) {
 		i.Title = &title
 	}

@@ -452,6 +452,14 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 			}
 		case "l": // labels
 		case "t": // title
+			mode = SelectorModeTitle
+
+			issue, err := m.store.Issue(m.table.SelectedRow())
+			if err != nil {
+				return returnError(err)
+			}
+
+			m.selector.SetValue(issue.Title)
 		}
 
 		m.focus.pop()()
@@ -468,27 +476,33 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 			return cmd
 		}
 
-		suggested := m.selector.Highlighted()
-		if suggested == nil {
-			return cmd
-		}
-
-		selectedIssueIDs := m.table.SelectedRows()
-
 		m.table.SetVisualMode(false)
 
+		selectedIssueIDs := m.table.SelectedRows()
 		selectedIssues, err := m.store.Issues(selectedIssueIDs...)
 		if err != nil {
 			return returnError(err)
 		}
 
+		suggested := m.selector.Highlighted()
+
+		if m.selectorMode != SelectorModeTitle && suggested == nil {
+			return nil
+		}
+
 		var updatedField store.UpdateIssueField
 		var updatedOpt client.IssueUpdateOpt
+		var updatedValue any
 
 		switch m.selectorMode {
+		default:
+			return nil
+
 		case SelectorModeAssignee:
 			updatedField = store.UpdateIssueFieldAssignee
 			updatedOpt = client.WithSetAssignee(suggested.Identifier)
+			updatedValue = suggested.Identifier
+
 		case SelectorModePriority:
 			updatedField = store.UpdateIssueFieldPrio
 			prio, err := strconv.ParseInt(suggested.Identifier, 10, 64)
@@ -496,23 +510,37 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 				return returnError(err)
 			}
 			updatedOpt = client.WithSetPrio(prio)
+			updatedValue = suggested.Identifier
+
 		case SelectorModeProject:
 			updatedField = store.UpdateIssueFieldProject
 			updatedOpt = client.WithSetProject(suggested.Identifier)
 			if suggested.Title == "(No Project)" {
 				updatedOpt = client.WithSetProject(models.NullString)
 			}
+			updatedValue = suggested.Identifier
+
 		case SelectorModeTeam:
 			updatedField = store.UpdateIssueFieldTeam
 			updatedOpt = client.WithSetTeam(suggested.Identifier)
+			updatedValue = suggested.Identifier
+
 		case SelectorModeState:
 			updatedField = store.UpdateIssueFieldState
 			updatedOpt = client.WithSetState(suggested.Identifier)
-		default:
-			return nil
+			updatedValue = suggested.Identifier
+
+		case SelectorModeTitle:
+			updatedField = store.UpdateIssueFieldTitle
+			inputValue := m.selector.Value()
+			if inputValue == "" {
+				return nil
+			}
+			updatedOpt = client.WithSetTitle(inputValue)
+			updatedValue = inputValue
 		}
 
-		err = m.store.UpdateIssues(updatedField, suggested.Identifier, selectedIssueIDs...)
+		err = m.store.UpdateIssues(updatedField, updatedValue, selectedIssueIDs...)
 		if err != nil {
 			return returnError(err)
 		}
@@ -527,10 +555,7 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 
 		updateIssues := m.client.UpdateIssues(selectedIssueIDs, onFail, updatedOpt)
 
-		return tea.Batch(
-			m.focus.pop(),
-			updateIssues,
-		)
+		return tea.Batch(m.focus.pop(), updateIssues)
 	}
 	return nil
 }

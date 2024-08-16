@@ -20,20 +20,11 @@ type Suggestion struct {
 }
 
 type Model struct {
-	title         string
-	options       []Suggestion
-	input         textinput.Model
-	suggestions   table.Model
-	width, height int
-}
-
-func (m *Model) Highlighted() *Suggestion {
-	for _, sug := range m.options {
-		if sug.Identifier == m.suggestions.SelectedRow() {
-			return &sug
-		}
-	}
-	return nil
+	title            string
+	options          []Suggestion
+	input            textinput.Model
+	suggestions      table.Model
+	width, maxHeight int
 }
 
 func makeSuggestionRows(opts []Suggestion) []*table.Row {
@@ -58,7 +49,7 @@ func makeSuggestionRows(opts []Suggestion) []*table.Row {
 
 func New(
 	prompt string,
-	width, height int,
+	width, maxHeight int,
 	options bool,
 ) Model {
 	var t table.Model
@@ -76,15 +67,13 @@ func New(
 			table.WithColumns([]*table.Column{
 				table.NewColumn(text.Plain("Options"), 1, table.WithAutoFill()),
 			}),
-			table.WithWidth(width-4),
-			table.WithHeight(height),
+			table.WithWidth(width),
 			table.WithFocused(false),
 			table.WithNoHeader(),
 		)
 	}
 
 	input.Prompt = " "
-	input.Width = width - 6
 	input.Placeholder = prompt
 	input.PlaceholderStyle = lipgloss.NewStyle().
 		Background(lipgloss.Color("#000")).
@@ -94,7 +83,7 @@ func New(
 	return Model{
 		input:       input,
 		width:       width,
-		height:      height,
+		maxHeight:   maxHeight,
 		suggestions: t,
 	}
 }
@@ -108,9 +97,37 @@ func (m *Model) Reset() {
 	m.suggestions.SetCursor(0)
 }
 
+func (m *Model) Highlighted() *Suggestion {
+	for _, sug := range m.options {
+		if sug.Identifier == m.suggestions.SelectedRow() {
+			return &sug
+		}
+	}
+	return nil
+}
+
+func (m *Model) Value() string {
+	return strings.TrimSpace(m.input.Value())
+}
+
 func (m *Model) SetSuggestions(suggestions []Suggestion) {
 	m.options = suggestions
 	m.suggestions.SetRows(makeSuggestionRows(suggestions))
+	m.suggestions.SetHeight(min(len(suggestions)+1, m.maxHeight))
+}
+
+func (m *Model) SetPlaceholder(placeholder string) {
+	m.input.Placeholder = placeholder
+}
+
+func (m *Model) SetValue(value string) {
+	m.input.SetValue(value)
+}
+
+func (m *Model) SetWidth(width int) {
+	m.width = width
+	m.input.Width = width - 2
+	m.suggestions.SetWidth(width)
 }
 
 func (m *Model) filterSuggestions() {
@@ -163,8 +180,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	input := lipgloss.NewStyle().
+		Width(m.width).
 		Background(lipgloss.Color("#000")).
-		Width(m.width - 4).
 		Render(m.input.View())
 
 	suggestions := m.suggestions.View()
@@ -184,7 +201,7 @@ func (m Model) View() string {
 	}
 
 	return lipgloss.NewStyle().
-		Height(m.height).
+		Width(m.width).
 		Border(lipgloss.RoundedBorder(), true).
 		BorderForeground(lipgloss.Color("#333")).
 		Render(content)

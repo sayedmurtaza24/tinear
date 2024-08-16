@@ -484,6 +484,15 @@ func (m *Model) ColumnOffset(columnTitle string) int {
 	return offset + 1
 }
 
+func (m *Model) ColumnWidth(columnTitle string) int {
+	for _, col := range m.cols {
+		if col.title.Raw() == columnTitle {
+			return col.calculatedWidth + 2
+		}
+	}
+	return -1
+}
+
 func (m *Model) Loading() bool {
 	return m.loading
 }

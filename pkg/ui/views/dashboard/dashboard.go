@@ -34,6 +34,7 @@ const (
 	SelectorModeState
 	SelectorModeProject
 	SelectorModeTeam
+	SelectorModeTitle
 )
 
 var focusNextMap = map[focus][]focus{
@@ -115,7 +116,7 @@ func New(store *store.Store, client *client.Client) *Model {
 
 	model.focus = []focusStackItem{{mode: FocusIssues}}
 
-	model.selector = input.New("assignee...", 25, 10, true)
+	model.selector = input.New("assignee...", 25, 5, true)
 
 	return &model
 }

@@ -306,7 +306,37 @@ func (m *Model) View() string {
 	issues := m.table.View()
 
 	issueOffset := m.table.TopOffset() + lipgloss.Height(header) + 1
-	assigneeColOffset := m.table.ColumnOffset("assignee")
+
+	var selectorColOffset, selectorColWidth int
+	var selectorPlaceholder string
+	switch m.selectorMode {
+	case SelectorModeTitle:
+		selectorColOffset = m.table.ColumnOffset("title")
+		selectorColWidth = m.table.ColumnWidth("title")
+		selectorPlaceholder = "set title..."
+	case SelectorModeAssignee:
+		selectorColOffset = m.table.ColumnOffset("assignee")
+		selectorColWidth = m.table.ColumnWidth("assignee")
+		selectorPlaceholder = "set assignee"
+	case SelectorModePriority:
+		selectorColOffset = m.table.ColumnOffset("prio")
+		selectorColWidth = m.table.ColumnWidth("prio")
+		selectorPlaceholder = "set priority"
+	case SelectorModeProject:
+		selectorColOffset = m.table.ColumnOffset("project")
+		selectorColWidth = m.table.ColumnWidth("project")
+		selectorPlaceholder = "move to project"
+	case SelectorModeTeam:
+		selectorColOffset = m.table.ColumnOffset("team")
+		selectorColWidth = m.table.ColumnWidth("team")
+		selectorPlaceholder = "move to team"
+	case SelectorModeState:
+		selectorColOffset = m.table.ColumnOffset("state")
+		selectorColWidth = m.table.ColumnWidth("state")
+		selectorPlaceholder = "set state"
+	}
+	m.selector.SetPlaceholder(selectorPlaceholder)
+	m.selector.SetWidth(max(selectorColWidth, 20))
 
 	if m.currView == ViewProject {
 		issues = lipgloss.JoinHorizontal(
@@ -315,7 +345,7 @@ func (m *Model) View() string {
 			issues,
 		)
 
-		assigneeColOffset += projectsTableWidth
+		selectorColOffset += projectsTableWidth
 	}
 
 	filter := pad(m.input.View(), 0, 2)
@@ -331,7 +361,7 @@ func (m *Model) View() string {
 
 	if m.focus.current() == FocusSelector {
 		mainContent = layouts.PlaceOverlay(
-			layouts.NewPosition(assigneeColOffset, issueOffset),
+			layouts.NewPosition(selectorColOffset, issueOffset),
 			m.selector.View(),
 			mainContent,
 		)
