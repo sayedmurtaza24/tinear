@@ -117,11 +117,23 @@ func (t *GetIssues_Issues_Nodes_Project) GetColor() string {
 	return t.Color
 }
 
+type GetIssues_Issues_Nodes_State_Team struct {
+	ID string "json:\"id\" graphql:\"id\""
+}
+
+func (t *GetIssues_Issues_Nodes_State_Team) GetID() string {
+	if t == nil {
+		t = &GetIssues_Issues_Nodes_State_Team{}
+	}
+	return t.ID
+}
+
 type GetIssues_Issues_Nodes_State struct {
-	ID       string  "json:\"id\" graphql:\"id\""
-	Name     string  "json:\"name\" graphql:\"name\""
-	Color    string  "json:\"color\" graphql:\"color\""
-	Position float64 "json:\"position\" graphql:\"position\""
+	ID       string                            "json:\"id\" graphql:\"id\""
+	Name     string                            "json:\"name\" graphql:\"name\""
+	Color    string                            "json:\"color\" graphql:\"color\""
+	Position float64                           "json:\"position\" graphql:\"position\""
+	Team     GetIssues_Issues_Nodes_State_Team "json:\"team\" graphql:\"team\""
 }
 
 func (t *GetIssues_Issues_Nodes_State) GetID() string {
@@ -147,6 +159,12 @@ func (t *GetIssues_Issues_Nodes_State) GetPosition() float64 {
 		t = &GetIssues_Issues_Nodes_State{}
 	}
 	return t.Position
+}
+func (t *GetIssues_Issues_Nodes_State) GetTeam() *GetIssues_Issues_Nodes_State_Team {
+	if t == nil {
+		t = &GetIssues_Issues_Nodes_State{}
+	}
+	return &t.Team
 }
 
 type GetIssues_Issues_Nodes_Labels_Nodes struct {
@@ -728,6 +746,9 @@ const GetIssuesDocument = `query GetIssues ($filter: IssueFilter, $after: String
 				name
 				color
 				position
+				team {
+					id
+				}
 			}
 			labels {
 				nodes {

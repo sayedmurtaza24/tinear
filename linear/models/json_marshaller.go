@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"log"
 	"reflect"
 	"strings"
 )
@@ -46,8 +45,6 @@ func (i IssueUpdateInput) MarshalJSON() ([]byte, error) {
 			result[fieldName] = v
 		}
 	}
-
-	log.Printf("%+v", result)
 
 	return json.Marshal(result)
 }

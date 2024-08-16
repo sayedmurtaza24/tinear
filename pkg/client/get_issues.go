@@ -112,9 +112,10 @@ func (c *Client) GetIssues(lastSync time.Time, after *string) tea.Cmd {
 					Color: coalece(iss.GetTeam().GetColor(), "#bbb"),
 				},
 				State: store.State{
-					ID:    iss.GetState().GetID(),
-					Name:  iss.GetState().GetName(),
-					Color: iss.GetState().GetColor(),
+					ID:     iss.GetState().GetID(),
+					Name:   iss.GetState().GetName(),
+					Color:  iss.GetState().GetColor(),
+					TeamID: iss.GetState().GetTeam().GetID(),
 				},
 				Project: store.Project{
 					ID:    iss.GetProject().GetID(),

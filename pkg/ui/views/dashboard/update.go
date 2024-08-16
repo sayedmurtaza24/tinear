@@ -3,6 +3,7 @@ package dashboard
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -396,7 +397,23 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 		case "e": // state
 			mode = SelectorModeState
 
-			states, err := m.store.States()
+			issues, err := m.store.Issues(m.table.SelectedRows()...)
+			if err != nil {
+				return returnError(err)
+			}
+
+			var teamID string
+
+			for _, issue := range issues {
+				if teamID == "" {
+					teamID = issue.Team.ID
+				} else if teamID != issue.Team.ID {
+					// means issues selected go across two teams
+					return returnError(errors.New("issues selected are not of the same team"))
+				}
+			}
+
+			states, err := m.store.States(teamID)
 			if err != nil {
 				return returnError(err)
 			}
@@ -516,77 +533,6 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 		)
 	}
 	return nil
-	// switch m.focus.current() {
-	// case FocusIssues:
-	// 	if key.String() != "a" {
-	// 		return nil
-	// 	}
-	//
-	// 	onPop := func() tea.Msg {
-	// 		m.table.Focus()
-	// 		m.selector.Reset()
-	// 		return nil
-	// 	}
-	// 	if m.focus.push(FocusSelector, tea.Batch(onPop, m.updateTables())) {
-	// 		m.table.Blur()
-	//
-	// 		users, err := m.store.Users()
-	// 		if err != nil {
-	// 			return returnError(err)
-	// 		}
-	//
-	// 		var usernames []input.Suggestion
-	// 		for _, user := range users {
-	// 			usernames = append(usernames, input.Suggestion{
-	// 				Identifier: user.ID,
-	// 				Title:      user.DisplayName,
-	// 			})
-	// 		}
-	//
-	// 		m.selector.SetSuggestions(usernames)
-	// 	}
-	//
-	// case FocusSelector:
-	//
-	// 	if key.Type == tea.KeyEnter {
-	// 		suggested := m.selector.Highlighted()
-	// 		if suggested == nil {
-	// 			return cmd
-	// 		}
-	//
-	// 		selectedIssueIDs := m.table.SelectedRows()
-	//
-	// 		selectedIssues, err := m.store.Issues(selectedIssueIDs...)
-	// 		if err != nil {
-	// 			return returnError(err)
-	// 		}
-	//
-	// 		err = m.store.SetAssignee(suggested.Identifier, selectedIssueIDs...)
-	// 		if err != nil {
-	// 			return returnError(err)
-	// 		}
-	//
-	// 		onFail := func() tea.Msg {
-	// 			err := m.store.StoreIssues(selectedIssues)
-	// 			if err != nil {
-	// 				return returnError(err)
-	// 			}
-	// 			return m.updateTables()
-	// 		}
-	//
-	// 		updateIssues := m.client.UpdateIssues(
-	// 			selectedIssueIDs,
-	// 			client.WithSetAssigneeID(suggested.Identifier, onFail),
-	// 		)
-	//
-	// 		return tea.Batch(
-	// 			m.focus.pop(),
-	// 			updateIssues,
-	// 		)
-	// 	}
-	// }
-	//
-	// return cmd
 }
 
 func (m *Model) handleDebug(key tea.KeyMsg) tea.Cmd {
@@ -702,6 +648,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	default:
+		log.Printf("recieved a msg that is not recognized here, type: %T, msg: %v", msg, msg)
+
 	case error:
 		m.err = msg
 		return m, nil

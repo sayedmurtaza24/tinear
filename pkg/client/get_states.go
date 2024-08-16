@@ -27,6 +27,6 @@ func (c *Client) GetStates(after *string) tea.Cmd {
 			})
 		}
 
-		return paginated(states, &resp.WorkflowStates.PageInfo)
+		return GetStatesRes(paginated(states, &resp.WorkflowStates.PageInfo))
 	}
 }

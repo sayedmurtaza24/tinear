@@ -1211,8 +1211,6 @@ type CustomView struct {
 	Color *string `json:"color,omitempty"`
 	// The organization of the custom view.
 	Organization *Organization `json:"organization"`
-	// The team associated with the custom view.
-	Team *Team `json:"team,omitempty"`
 	// The user who created the custom view.
 	Creator *User `json:"creator"`
 	// The user who owns the custom view.
@@ -1231,6 +1229,8 @@ type CustomView struct {
 	SlugID *string `json:"slugId,omitempty"`
 	// The model name of the custom view.
 	ModelName string `json:"modelName"`
+	// The team associated with the custom view.
+	Team *Team `json:"team,omitempty"`
 	// Projects associated with the custom view.
 	Projects *ProjectConnection `json:"projects"`
 	// Issues associated with the custom view.
@@ -1582,6 +1582,8 @@ type CustomerNeed struct {
 	Project *Project `json:"project,omitempty"`
 	// The comment this need is referencing.
 	Comment *Comment `json:"comment,omitempty"`
+	// The attachment this need is referencing.
+	Attachment *Attachment `json:"attachment,omitempty"`
 	// The priority of the customer need. 0 = No priority, 1 = Critical, 2 = Important, 3 = Nice to have.
 	Priority float64 `json:"priority"`
 }
@@ -3220,6 +3222,14 @@ type Favorite struct {
 	User *User `json:"user,omitempty"`
 	// URL of the favorited entity. Folders return 'null' value.
 	URL *string `json:"url,omitempty"`
+	// [Internal] Favorite's title text (name of the favorite'd object or folder).
+	Title string `json:"title"`
+	// [Internal] Detail text for favorite's `title` (e.g. team's name for a project).
+	Detail *string `json:"detail,omitempty"`
+	// [Internal] Returns the color of the favorite's icon. Unavailable for avatars and views with fixed icons (e.g. cycle).
+	Color *string `json:"color,omitempty"`
+	// [Internal] Name of the favorite's icon. Unavailable for standard views, issues, and avatars
+	Icon *string `json:"icon,omitempty"`
 }
 
 func (Favorite) IsNode() {}
@@ -6731,6 +6741,8 @@ type NullableProjectFilter struct {
 	TargetDate *NullableDateComparator `json:"targetDate,omitempty"`
 	// Comparator for the project health.
 	Health *StringComparator `json:"health,omitempty"`
+	// Comparator for the project health (with age).
+	HealthWithAge *StringComparator `json:"healthWithAge,omitempty"`
 	// Comparator for filtering projects with relations.
 	HasRelatedRelations *RelationExistsComparator `json:"hasRelatedRelations,omitempty"`
 	// [Deprecated] Comparator for filtering projects which this is depended on by.
@@ -7832,6 +7844,8 @@ type Project struct {
 	LastAppliedTemplate *Template `json:"lastAppliedTemplate,omitempty"`
 	// The priority of the project. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low.
 	Priority int64 `json:"priority"`
+	// The time at which the project health was updated.
+	HealthUpdatedAt *string `json:"healthUpdatedAt,omitempty"`
 	// The total number of issues in the project after each week.
 	IssueCountHistory []float64 `json:"issueCountHistory"`
 	// The number of completed issues in the project after each week.
@@ -7941,6 +7955,8 @@ type ProjectCollectionFilter struct {
 	TargetDate *NullableDateComparator `json:"targetDate,omitempty"`
 	// Comparator for the project health.
 	Health *StringComparator `json:"health,omitempty"`
+	// Comparator for the project health (with age).
+	HealthWithAge *StringComparator `json:"healthWithAge,omitempty"`
 	// Comparator for filtering projects with relations.
 	HasRelatedRelations *RelationExistsComparator `json:"hasRelatedRelations,omitempty"`
 	// [Deprecated] Comparator for filtering projects which this is depended on by.
@@ -8072,6 +8088,8 @@ type ProjectFilter struct {
 	TargetDate *NullableDateComparator `json:"targetDate,omitempty"`
 	// Comparator for the project health.
 	Health *StringComparator `json:"health,omitempty"`
+	// Comparator for the project health (with age).
+	HealthWithAge *StringComparator `json:"healthWithAge,omitempty"`
 	// Comparator for filtering projects with relations.
 	HasRelatedRelations *RelationExistsComparator `json:"hasRelatedRelations,omitempty"`
 	// [Deprecated] Comparator for filtering projects which this is depended on by.
@@ -8766,6 +8784,8 @@ type ProjectSearchResult struct {
 	LastAppliedTemplate *Template `json:"lastAppliedTemplate,omitempty"`
 	// The priority of the project. 0 = No priority, 1 = Urgent, 2 = High, 3 = Normal, 4 = Low.
 	Priority int64 `json:"priority"`
+	// The time at which the project health was updated.
+	HealthUpdatedAt *string `json:"healthUpdatedAt,omitempty"`
 	// The total number of issues in the project after each week.
 	IssueCountHistory []float64 `json:"issueCountHistory"`
 	// The number of completed issues in the project after each week.
@@ -10136,6 +10156,8 @@ type Team struct {
 	AutoCloseStateID *string `json:"autoCloseStateId,omitempty"`
 	// Period after which automatically closed and completed issues are automatically archived in months.
 	AutoArchivePeriod float64 `json:"autoArchivePeriod"`
+	// Whether parent issues should automatically close when all child issues are closed, and child issues should automatically close when the parent issue is closed.
+	AutoCloseParentAndChildIssues *bool `json:"autoCloseParentAndChildIssues,omitempty"`
 	// The workflow state into which issues are moved when they are marked as a duplicate of another issue. Defaults to the first canceled state.
 	MarkedAsDuplicateWorkflowState *WorkflowState `json:"markedAsDuplicateWorkflowState,omitempty"`
 	// [INTERNAL] Whether new users should join this team by default.
@@ -10292,6 +10314,8 @@ type TeamCreateInput struct {
 	AutoArchivePeriod *float64 `json:"autoArchivePeriod,omitempty"`
 	// The workflow state into which issues are moved when they are marked as a duplicate of another issue.
 	MarkedAsDuplicateWorkflowStateID *string `json:"markedAsDuplicateWorkflowStateId,omitempty"`
+	// The parent team ID.
+	ParentID *string `json:"parentId,omitempty"`
 }
 
 type TeamEdge struct {
@@ -10592,6 +10616,8 @@ type TeamUpdateInput struct {
 	AutoClosePeriod *float64 `json:"autoClosePeriod,omitempty"`
 	// The canceled workflow state which auto closed issues will be set to.
 	AutoCloseStateID *string `json:"autoCloseStateId,omitempty"`
+	// [INTERNAL] Whether to automatically close a parent issue in this team if all its sub-issues are closed, and vice versa.
+	AutoCloseParentAndChildIssues *bool `json:"autoCloseParentAndChildIssues,omitempty"`
 	// Period after which closed and completed issues are automatically archived, in months.
 	AutoArchivePeriod *float64 `json:"autoArchivePeriod,omitempty"`
 	// The workflow state into which issues are moved when they are marked as a duplicate of another issue.
@@ -10600,6 +10626,8 @@ type TeamUpdateInput struct {
 	JoinByDefault *bool `json:"joinByDefault,omitempty"`
 	// Whether the team is managed by SCIM integration. Mutation restricted to workspace admins and only unsetting is allowed!
 	ScimManaged *bool `json:"scimManaged,omitempty"`
+	// The parent team ID.
+	ParentID *string `json:"parentId,omitempty"`
 }
 
 // A template object used for creating entities faster.
@@ -10688,40 +10716,6 @@ type TemplateUpdateInput struct {
 	// The position of the template in the templates list.
 	SortOrder *float64 `json:"sortOrder,omitempty"`
 }
-
-// [DEPRECATED] A text draft, used for comments and project updates.
-type TextDraft struct {
-	// The unique identifier of the entity.
-	ID string `json:"id"`
-	// The time at which the entity was created.
-	CreatedAt string `json:"createdAt"`
-	// The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
-	//     been updated after creation.
-	UpdatedAt string `json:"updatedAt"`
-	// The time at which the entity was archived. Null if the entity has not been archived.
-	ArchivedAt *string `json:"archivedAt,omitempty"`
-	// The text content as a Prosemirror document.
-	BodyData string `json:"bodyData"`
-	// Additional properties for the draft.
-	Data *string `json:"data,omitempty"`
-	// Whether the draft was autogenerated for the user.
-	IsAutogenerated bool `json:"isAutogenerated"`
-	// The user who created the draft.
-	User *User `json:"user"`
-	// The issue for which this is a draft comment.
-	Issue *Issue `json:"issue,omitempty"`
-	// The project for which this is a draft project update.
-	Project *Project `json:"project,omitempty"`
-	// The project update for which this is a draft comment.
-	ProjectUpdate *ProjectUpdate `json:"projectUpdate,omitempty"`
-	// The comment for which this is a draft comment reply.
-	ParentComment *Comment `json:"parentComment,omitempty"`
-}
-
-func (TextDraft) IsNode() {}
-
-// The unique identifier of the entity.
-func (this TextDraft) GetID() string { return this.ID }
 
 // A time schedule.
 type TimeSchedule struct {
@@ -11034,8 +11028,6 @@ type User struct {
 	Active bool `json:"active"`
 	// User's profile URL.
 	URL string `json:"url"`
-	// [Internal] Text drafts created by the user.
-	TextDrafts []*TextDraft `json:"textDrafts"`
 	// Issues assigned to the user.
 	AssignedIssues *IssueConnection `json:"assignedIssues"`
 	// Issues created by the user.

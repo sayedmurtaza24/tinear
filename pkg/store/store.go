@@ -214,16 +214,21 @@ func (s *Store) StoreUsers(users []User) error {
 	return nil
 }
 
-func (s *Store) States() ([]State, error) {
+func (s *Store) States(teamID string) ([]State, error) {
 	if s.current.Org.ID == "" {
 		return nil, ErrNoOrgSelected
+	}
+
+	if teamID == "" {
+		return nil, errors.New("no team id was given")
 	}
 
 	var states []State
 	err := s.db.Select(&states, fmt.Sprintf(`
 		SELECT id, name, color, team_id 
 		FROM states 
-		WHERE org_id = %s`, currentOrg),
+		WHERE team_id = ? AND org_id = %s`, currentOrg),
+		teamID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't select states: %w", err)
@@ -247,7 +252,8 @@ func (s *Store) StoreStates(states []State) error {
 		VALUES (:id, :name, :color, :team_id, %s)
 		ON CONFLICT (id) DO UPDATE 
 		SET name = EXCLUDED.name, 
-			color = EXCLUDED.color
+			color = EXCLUDED.color,
+			team_id = EXCLUDED.team_id
 		`, currentOrg),
 		states,
 	)

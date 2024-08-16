@@ -28,6 +28,9 @@ query GetIssues($filter: IssueFilter, $after: String, $first: Int = 50) {
         name
         color
         position
+        team {
+          id
+        }
       }
       labels {
         nodes {
