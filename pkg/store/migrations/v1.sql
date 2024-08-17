@@ -52,7 +52,8 @@ CREATE TABLE states (
     name TEXT NOT NULL,
     color TEXT NOT NULL,
     team_id TEXT NOT NULL,
-    org_id TEXT NOT NULL
+    org_id TEXT NOT NULL,
+    FOREIGN KEY (org_id) REFERENCES orgs(id)
 );
 
 CREATE TABLE issues (
@@ -64,7 +65,6 @@ CREATE TABLE issues (
     state_id TEXT NOT NULL,
     team_id TEXT NOT NULL,
     description TEXT,
-    labels BLOB,
     assignee_id TEXT,
     project_id TEXT NOT NULL,
     pinned BOOLEAN DEFAULT FALSE,
@@ -77,6 +77,22 @@ CREATE TABLE issues (
     FOREIGN KEY (assignee_id) REFERENCES users(id),
     FOREIGN KEY (project_id) REFERENCES projects(id)
 );
+
+CREATE TABLE labels (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    team_id TEXT,
+    org_id TEXT NOT NULL,
+    FOREIGN KEY (org_id) REFERENCES orgs(id)
+);
+
+CREATE TABLE issue_label (
+    issue_id TEXT NOT NULL,
+    label_id TEXT NOT NULL,
+    FOREIGN KEY (label_id) REFERENCES labels(id),
+    FOREIGN KEY (issue_id) REFERENCES issues(id)
+); 
 
 CREATE VIRTUAL TABLE search USING fts5 (
   tokenize = "trigram",

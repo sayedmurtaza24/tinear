@@ -47,11 +47,7 @@ func makeSuggestionRows(opts []Suggestion) []*table.Row {
 	return rows
 }
 
-func New(
-	prompt string,
-	width, maxHeight int,
-	options bool,
-) Model {
+func New(maxHeight int, options bool) Model {
 	var t table.Model
 
 	input := textinput.New()
@@ -67,14 +63,12 @@ func New(
 			table.WithColumns([]*table.Column{
 				table.NewColumn(text.Plain("Options"), 1, table.WithAutoFill()),
 			}),
-			table.WithWidth(width),
 			table.WithFocused(false),
 			table.WithNoHeader(),
 		)
 	}
 
 	input.Prompt = " "
-	input.Placeholder = prompt
 	input.PlaceholderStyle = lipgloss.NewStyle().
 		Background(lipgloss.Color("#000")).
 		Foreground(lipgloss.Color("#555"))
@@ -82,7 +76,6 @@ func New(
 
 	return Model{
 		input:       input,
-		width:       width,
 		maxHeight:   maxHeight,
 		suggestions: t,
 	}

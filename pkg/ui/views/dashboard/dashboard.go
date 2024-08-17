@@ -116,7 +116,7 @@ func New(store *store.Store, client *client.Client) *Model {
 
 	model.focus = []focusStackItem{{mode: FocusIssues}}
 
-	model.selector = input.New("assignee...", 25, 5, true)
+	model.selector = input.New(12, true)
 
 	return &model
 }

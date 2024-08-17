@@ -34,8 +34,12 @@ query GetIssues($filter: IssueFilter, $after: String, $first: Int = 50) {
       }
       labels {
         nodes {
+          id
           name
           color
+          team {
+            id
+          }
         }
       }
       createdAt

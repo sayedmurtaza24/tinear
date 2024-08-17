@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"strings"
 	"time"
@@ -210,13 +209,8 @@ func (m *Model) updateTableRows(issues []store.Issue) {
 		teamNormal := text.Colored(issue.Team.Name, color.Focusable(issue.Team.Color, "#888"))
 		teamSelected := text.Colored(issue.Team.Name, color.Focusable(issue.Team.Color, "#888").Brighten(0.2))
 
-		parsedLabels, err := issue.Labels.Parse()
-		if err != nil {
-			log.Printf("couldn't parse labels: %v\n", err.Error())
-		}
-
 		var labelsNormal, labelsSelected []text.Focusable
-		for _, label := range parsedLabels {
+		for _, label := range issue.Labels {
 			labelsNormal = append(labelsNormal, text.Chip(
 				label.Name,
 				color.Focusable("#eee", "#888"),

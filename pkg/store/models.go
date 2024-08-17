@@ -1,8 +1,6 @@
 package store
 
 import (
-	"encoding/json"
-	"fmt"
 	"time"
 )
 
@@ -70,32 +68,11 @@ type User struct {
 
 type Prio int
 
-type Label []byte
-
-type ParsedLabel struct {
-	Name  string
-	Color string
-}
-
-func (l Label) Parse() ([]ParsedLabel, error) {
-	if l == nil {
-		return make([]ParsedLabel, 0), nil
-	}
-
-	var parsed []ParsedLabel
-	err := json.Unmarshal(l, &parsed)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't parse labels: %w", err)
-	}
-	return parsed, nil
-}
-
-func ToLabel(p []ParsedLabel) ([]byte, error) {
-	b, err := json.Marshal(p)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't marshal parsed labels: %w", err)
-	}
-	return b, nil
+type Label struct {
+	ID     string
+	Name   string
+	Color  string
+	TeamID string
 }
 
 type Issue struct {
@@ -103,7 +80,7 @@ type Issue struct {
 	Identifier  string
 	Title       string
 	Description string
-	Labels      Label
+	Labels      []Label
 	Priority    Prio
 	Team        Team
 	State       State
@@ -121,3 +98,4 @@ func (u Team) getID() string    { return u.ID }
 func (u Project) getID() string { return u.ID }
 func (u State) getID() string   { return u.ID }
 func (u Issue) getID() string   { return u.ID }
+func (u Label) getID() string   { return u.ID }

@@ -1,7 +1,6 @@
 package hover
 
 import (
-	"log"
 	"time"
 
 	"github.com/charmbracelet/glamour"
@@ -57,13 +56,9 @@ func HoverIssue(issue store.Issue, width, maxHeight int, focus bool) string {
 		assigneeColor = "#76946A"
 	}
 
-	parsed, err := issue.Labels.Parse()
-	if err != nil {
-		log.Println(err)
-	}
-
 	var labels []text.Focusable
-	for _, label := range parsed {
+
+	for _, label := range issue.Labels {
 		labels = append(labels, text.Chip(
 			label.Name,
 			color.Focusable("#eee", "#888"),

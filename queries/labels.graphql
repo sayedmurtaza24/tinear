@@ -1,0 +1,16 @@
+query GetLabels($after: String, $first: Int = 50) {
+  issueLabels(after: $after, first: $first) {
+    nodes {
+      id
+      color
+      name
+      team {
+        id
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

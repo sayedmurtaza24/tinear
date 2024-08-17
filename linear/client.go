@@ -13,6 +13,7 @@ import (
 type LinearClient interface {
 	GetIssues(ctx context.Context, filter *models.IssueFilter, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetIssues, error)
 	BatchUpdateIssues(ctx context.Context, input models.IssueUpdateInput, ids []string, interceptors ...clientv2.RequestInterceptor) (*BatchUpdateIssues, error)
+	GetLabels(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetLabels, error)
 	GetOrg(ctx context.Context, interceptors ...clientv2.RequestInterceptor) (*GetOrg, error)
 	GetProjects(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetProjects, error)
 	GetStates(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetStates, error)
@@ -167,11 +168,30 @@ func (t *GetIssues_Issues_Nodes_State) GetTeam() *GetIssues_Issues_Nodes_State_T
 	return &t.Team
 }
 
-type GetIssues_Issues_Nodes_Labels_Nodes struct {
-	Name  string "json:\"name\" graphql:\"name\""
-	Color string "json:\"color\" graphql:\"color\""
+type GetIssues_Issues_Nodes_Labels_Nodes_Team struct {
+	ID string "json:\"id\" graphql:\"id\""
 }
 
+func (t *GetIssues_Issues_Nodes_Labels_Nodes_Team) GetID() string {
+	if t == nil {
+		t = &GetIssues_Issues_Nodes_Labels_Nodes_Team{}
+	}
+	return t.ID
+}
+
+type GetIssues_Issues_Nodes_Labels_Nodes struct {
+	ID    string                                    "json:\"id\" graphql:\"id\""
+	Name  string                                    "json:\"name\" graphql:\"name\""
+	Color string                                    "json:\"color\" graphql:\"color\""
+	Team  *GetIssues_Issues_Nodes_Labels_Nodes_Team "json:\"team,omitempty\" graphql:\"team\""
+}
+
+func (t *GetIssues_Issues_Nodes_Labels_Nodes) GetID() string {
+	if t == nil {
+		t = &GetIssues_Issues_Nodes_Labels_Nodes{}
+	}
+	return t.ID
+}
 func (t *GetIssues_Issues_Nodes_Labels_Nodes) GetName() string {
 	if t == nil {
 		t = &GetIssues_Issues_Nodes_Labels_Nodes{}
@@ -183,6 +203,12 @@ func (t *GetIssues_Issues_Nodes_Labels_Nodes) GetColor() string {
 		t = &GetIssues_Issues_Nodes_Labels_Nodes{}
 	}
 	return t.Color
+}
+func (t *GetIssues_Issues_Nodes_Labels_Nodes) GetTeam() *GetIssues_Issues_Nodes_Labels_Nodes_Team {
+	if t == nil {
+		t = &GetIssues_Issues_Nodes_Labels_Nodes{}
+	}
+	return t.Team
 }
 
 type GetIssues_Issues_Nodes_Labels struct {
@@ -336,6 +362,85 @@ func (t *BatchUpdateIssues_IssueBatchUpdate) GetSuccess() bool {
 		t = &BatchUpdateIssues_IssueBatchUpdate{}
 	}
 	return t.Success
+}
+
+type GetLabels_IssueLabels_Nodes_Team struct {
+	ID string "json:\"id\" graphql:\"id\""
+}
+
+func (t *GetLabels_IssueLabels_Nodes_Team) GetID() string {
+	if t == nil {
+		t = &GetLabels_IssueLabels_Nodes_Team{}
+	}
+	return t.ID
+}
+
+type GetLabels_IssueLabels_Nodes struct {
+	ID    string                            "json:\"id\" graphql:\"id\""
+	Color string                            "json:\"color\" graphql:\"color\""
+	Name  string                            "json:\"name\" graphql:\"name\""
+	Team  *GetLabels_IssueLabels_Nodes_Team "json:\"team,omitempty\" graphql:\"team\""
+}
+
+func (t *GetLabels_IssueLabels_Nodes) GetID() string {
+	if t == nil {
+		t = &GetLabels_IssueLabels_Nodes{}
+	}
+	return t.ID
+}
+func (t *GetLabels_IssueLabels_Nodes) GetColor() string {
+	if t == nil {
+		t = &GetLabels_IssueLabels_Nodes{}
+	}
+	return t.Color
+}
+func (t *GetLabels_IssueLabels_Nodes) GetName() string {
+	if t == nil {
+		t = &GetLabels_IssueLabels_Nodes{}
+	}
+	return t.Name
+}
+func (t *GetLabels_IssueLabels_Nodes) GetTeam() *GetLabels_IssueLabels_Nodes_Team {
+	if t == nil {
+		t = &GetLabels_IssueLabels_Nodes{}
+	}
+	return t.Team
+}
+
+type GetLabels_IssueLabels_PageInfo struct {
+	EndCursor   *string "json:\"endCursor,omitempty\" graphql:\"endCursor\""
+	HasNextPage bool    "json:\"hasNextPage\" graphql:\"hasNextPage\""
+}
+
+func (t *GetLabels_IssueLabels_PageInfo) GetEndCursor() *string {
+	if t == nil {
+		t = &GetLabels_IssueLabels_PageInfo{}
+	}
+	return t.EndCursor
+}
+func (t *GetLabels_IssueLabels_PageInfo) GetHasNextPage() bool {
+	if t == nil {
+		t = &GetLabels_IssueLabels_PageInfo{}
+	}
+	return t.HasNextPage
+}
+
+type GetLabels_IssueLabels struct {
+	Nodes    []*GetLabels_IssueLabels_Nodes "json:\"nodes\" graphql:\"nodes\""
+	PageInfo GetLabels_IssueLabels_PageInfo "json:\"pageInfo\" graphql:\"pageInfo\""
+}
+
+func (t *GetLabels_IssueLabels) GetNodes() []*GetLabels_IssueLabels_Nodes {
+	if t == nil {
+		t = &GetLabels_IssueLabels{}
+	}
+	return t.Nodes
+}
+func (t *GetLabels_IssueLabels) GetPageInfo() *GetLabels_IssueLabels_PageInfo {
+	if t == nil {
+		t = &GetLabels_IssueLabels{}
+	}
+	return &t.PageInfo
 }
 
 type GetOrg_Organization struct {
@@ -661,6 +766,17 @@ func (t *BatchUpdateIssues) GetIssueBatchUpdate() *BatchUpdateIssues_IssueBatchU
 	return &t.IssueBatchUpdate
 }
 
+type GetLabels struct {
+	IssueLabels GetLabels_IssueLabels "json:\"issueLabels\" graphql:\"issueLabels\""
+}
+
+func (t *GetLabels) GetIssueLabels() *GetLabels_IssueLabels {
+	if t == nil {
+		t = &GetLabels{}
+	}
+	return &t.IssueLabels
+}
+
 type GetOrg struct {
 	Organization GetOrg_Organization "json:\"organization\" graphql:\"organization\""
 }
@@ -752,8 +868,12 @@ const GetIssuesDocument = `query GetIssues ($filter: IssueFilter, $after: String
 			}
 			labels {
 				nodes {
+					id
 					name
 					color
+					team {
+						id
+					}
 				}
 			}
 			createdAt
@@ -802,6 +922,42 @@ func (c *Client) BatchUpdateIssues(ctx context.Context, input models.IssueUpdate
 
 	var res BatchUpdateIssues
 	if err := c.Client.Post(ctx, "BatchUpdateIssues", BatchUpdateIssuesDocument, &res, vars, interceptors...); err != nil {
+		if c.Client.ParseDataWhenErrors {
+			return &res, err
+		}
+
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+const GetLabelsDocument = `query GetLabels ($after: String, $first: Int = 50) {
+	issueLabels(after: $after, first: $first) {
+		nodes {
+			id
+			color
+			name
+			team {
+				id
+			}
+		}
+		pageInfo {
+			endCursor
+			hasNextPage
+		}
+	}
+}
+`
+
+func (c *Client) GetLabels(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetLabels, error) {
+	vars := map[string]any{
+		"after": after,
+		"first": first,
+	}
+
+	var res GetLabels
+	if err := c.Client.Post(ctx, "GetLabels", GetLabelsDocument, &res, vars, interceptors...); err != nil {
 		if c.Client.ParseDataWhenErrors {
 			return &res, err
 		}
@@ -976,6 +1132,7 @@ func (c *Client) GetAllUsers(ctx context.Context, after *string, first *int64, i
 var DocumentOperationNames = map[string]string{
 	GetIssuesDocument:         "GetIssues",
 	BatchUpdateIssuesDocument: "BatchUpdateIssues",
+	GetLabelsDocument:         "GetLabels",
 	GetOrgDocument:            "GetOrg",
 	GetProjectsDocument:       "GetProjects",
 	GetStatesDocument:         "GetStates",

@@ -29,11 +29,11 @@ func (c *Client) GetTeams(after *string) tea.Cmd {
 
 		var teams []store.Team
 
-		for _, proj := range resp.Teams.GetNodes() {
+		for _, team := range resp.Teams.GetNodes() {
 			teams = append(teams, store.Team{
-				ID:    proj.ID,
-				Name:  proj.Name,
-				Color: color(proj.Color),
+				ID:    team.ID,
+				Name:  team.Name,
+				Color: color(team.Color),
 			})
 		}
 

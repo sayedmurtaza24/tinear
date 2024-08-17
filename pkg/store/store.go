@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -264,6 +265,56 @@ func (s *Store) StoreStates(states []State) error {
 	return nil
 }
 
+func (s *Store) Labels(teamID string) ([]Label, error) {
+	if s.current.Org.ID == "" {
+		return nil, ErrNoOrgSelected
+	}
+
+	if teamID == "" {
+		return nil, errors.New("no team id was given")
+	}
+
+	var labels []Label
+	err := s.db.Select(&labels, fmt.Sprintf(`
+		SELECT id, name, color, team_id 
+		FROM labels 
+		WHERE team_id = ? AND org_id = %s`, currentOrg),
+		teamID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't select labels: %w", err)
+	}
+
+	return labels, nil
+}
+
+func (s *Store) StoreLabels(labels []Label) error {
+	if s.current.Org.ID == "" {
+		return ErrNoOrgSelected
+	}
+
+	labels = removeDuplicatesAndEmpties(labels)
+	if len(labels) == 0 {
+		return nil
+	}
+
+	_, err := s.db.NamedExec(fmt.Sprintf(`
+		INSERT INTO labels (id, name, color, team_id, org_id)
+		VALUES (:id, :name, :color, :team_id, %s)
+		ON CONFLICT (id) DO UPDATE 
+		SET name = EXCLUDED.name, 
+			color = EXCLUDED.color,
+			team_id = EXCLUDED.team_id
+		`, currentOrg),
+		labels,
+	)
+	if err != nil {
+		return fmt.Errorf("couldn't store labels: %w", err)
+	}
+
+	return nil
+}
+
 func (s *Store) Teams() ([]Team, error) {
 	if s.current.Org.ID == "" {
 		return nil, ErrNoOrgSelected
@@ -356,12 +407,29 @@ func (s *Store) Issue(issueID string) (*Issue, error) {
 		return nil, ErrNoOrgSelected
 	}
 
-	var issue Issue
+	var res struct {
+		Issue
+		IssueLabels string
+	}
 	err := s.db.
 		QueryRowx(fmt.Sprintf(`
+			WITH json_labels AS (
+				SELECT issue_id, 
+					json_group_array(
+						json_object(
+							'id', labels.id, 
+							'name', labels.name, 
+							'color', labels.color, 
+							'team_id', labels.team_id
+						) 
+					) as labels
+				FROM issue_label
+				JOIN labels ON labels.id = issue_label.label_id
+				GROUP BY issue_id
+			)
 			SELECT 
 				issues.id, identifier, title,
-				priority, description, labels, 
+				priority, description,
 				pinned, created_at, updated_at, canceled_at,
 				states.id AS "state.id",
 				states.name AS "state.name",
@@ -376,20 +444,29 @@ func (s *Store) Issue(issueID string) (*Issue, error) {
 				COALESCE(users.name, '') AS "assignee.name",
 				COALESCE(users.display_name, '') AS "assignee.display_name",
 				COALESCE(users.email, '') AS "assignee.email",
-				COALESCE(users.is_me, FALSE) AS "assignee.is_me"
+				COALESCE(users.is_me, FALSE) AS "assignee.is_me",
+				COALESCE(json_labels.labels, '') AS issue_labels
 			FROM issues
 			LEFT JOIN users ON issues.assignee_id = users.id
 			LEFT JOIN projects ON issues.project_id = projects.id
 			LEFT JOIN teams ON issues.team_id = teams.id
 			LEFT JOIN states ON issues.state_id = states.id
+			LEFT JOIN json_labels ON json_labels.issue_id = issues.id
 			WHERE issues.id = ? AND issues.org_id = %s
 		`, currentOrg), issueID).
-		StructScan(&issue)
+		StructScan(&res)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan one issue: %w", err)
 	}
 
-	return &issue, nil
+	if res.IssueLabels != "" {
+		err = json.Unmarshal([]byte(res.IssueLabels), &res.Labels)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal labels for one issue: %w", err)
+		}
+	}
+
+	return &res.Issue, nil
 }
 
 func (s *Store) Issues(issueIDs ...string) ([]Issue, error) {
@@ -403,9 +480,23 @@ func (s *Store) Issues(issueIDs ...string) ([]Issue, error) {
 	}
 
 	query := fmt.Sprintf(`
+		WITH json_labels AS (
+			SELECT issue_id, 
+				json_group_array(
+					json_object(
+						'id', labels.id, 
+						'name', labels.name, 
+						'color', labels.color, 
+						'team_id', labels.team_id
+					) 
+				) as labels
+			FROM issue_label
+			JOIN labels ON labels.id = issue_label.label_id
+			GROUP BY issue_id
+		)
 		SELECT 
 			issues.id, identifier, title,
-			priority, description, labels, 
+			priority, description,
 			pinned, created_at, updated_at, canceled_at,
 			states.id AS "state.id",
 			states.name AS "state.name",
@@ -421,13 +512,15 @@ func (s *Store) Issues(issueIDs ...string) ([]Issue, error) {
 			COALESCE(users.name, '') AS "assignee.name",
 			COALESCE(users.display_name, '') AS "assignee.display_name",
 			COALESCE(users.email, '') AS "assignee.email",
-			COALESCE(users.is_me, FALSE) AS "assignee.is_me"
+			COALESCE(users.is_me, FALSE) AS "assignee.is_me",
+			COALESCE(json_labels.labels, '') AS issue_labels
 		FROM issues
 		INNER JOIN orgs ON issues.org_id = orgs.id
 		LEFT JOIN users ON issues.assignee_id = users.id
 		LEFT JOIN projects ON issues.project_id = projects.id
 		LEFT JOIN teams ON issues.team_id = teams.id
 		LEFT JOIN states ON issues.state_id = states.id
+		LEFT JOIN json_labels ON json_labels.issue_id = issues.id
 		WHERE %s %s orgs.active = TRUE AND (
 			states.name NOT IN ('Done', 'Canceled') OR 
 			updated_at > DATETIME(CURRENT_TIMESTAMP, '-14 days')
@@ -443,12 +536,24 @@ func (s *Store) Issues(issueIDs ...string) ([]Issue, error) {
 	}
 
 	for rows.Next() {
-		var issue Issue
-		err := rows.StructScan(&issue)
+		var res struct {
+			Issue
+			IssueLabels string
+		}
+
+		err := rows.StructScan(&res)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan issue: %w", err)
 		}
-		issues = append(issues, issue)
+
+		if res.IssueLabels != "" {
+			err = json.Unmarshal([]byte(res.IssueLabels), &res.Labels)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal labels for issue: %w", err)
+			}
+		}
+
+		issues = append(issues, res.Issue)
 	}
 
 	if rows.Err() != nil {
@@ -471,13 +576,26 @@ func (s *Store) SearchIssues(search string) ([]Issue, error) {
 	}
 
 	query := fmt.Sprintf(`
+		WITH json_labels AS (
+			SELECT issue_id, 
+				json_group_array(
+					json_object(
+						'id', labels.id, 
+						'name', labels.name, 
+						'color', labels.color, 
+						'team_id', labels.team_id
+					) 
+				) as labels
+			FROM issue_label
+			JOIN labels ON labels.id = issue_label.label_id
+			GROUP BY issue_id
+		)
 		SELECT 
 			issues.id, 
 			issues.identifier, 
 			issues.title,
 			priority, 
 			issues.description, 
-			issues.labels, 
 			pinned, created_at, 
 			updated_at, canceled_at,
 			states.id AS "state.id",
@@ -493,7 +611,8 @@ func (s *Store) SearchIssues(search string) ([]Issue, error) {
 			COALESCE(users.name, '') AS "assignee.name",
 			COALESCE(users.display_name, '') AS "assignee.display_name",
 			COALESCE(users.email, '') AS "assignee.email",
-			COALESCE(users.is_me, FALSE) AS "assignee.is_me"
+			COALESCE(users.is_me, FALSE) AS "assignee.is_me",
+			COALESCE(json_labels.labels, '') AS issue_labels
 		FROM issues
 		INNER JOIN orgs ON issues.org_id = orgs.id
 		INNER JOIN search ON issues.id = search.id
@@ -501,6 +620,7 @@ func (s *Store) SearchIssues(search string) ([]Issue, error) {
 		LEFT JOIN projects ON issues.project_id = projects.id
 		LEFT JOIN teams ON issues.team_id = teams.id
 		LEFT JOIN states ON issues.state_id = states.id
+		LEFT JOIN json_labels ON json_labels.issue_id = issues.id
 		WHERE %s orgs.active = TRUE AND search MATCH ? AND (
 			states.name NOT IN ('Done', 'Canceled') OR 
 			updated_at > DATETIME(CURRENT_TIMESTAMP, '-14 days')
@@ -516,12 +636,24 @@ func (s *Store) SearchIssues(search string) ([]Issue, error) {
 	}
 
 	for rows.Next() {
-		var issue Issue
-		err := rows.StructScan(&issue)
+		var res struct {
+			Issue
+			IssueLabels string
+		}
+
+		err := rows.StructScan(&res)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan issue: %w", err)
 		}
-		issues = append(issues, issue)
+
+		if res.IssueLabels != "" {
+			err = json.Unmarshal([]byte(res.IssueLabels), &res.Labels)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal labels for issue: %w", err)
+			}
+		}
+
+		issues = append(issues, res.Issue)
 	}
 
 	if rows.Err() != nil {
@@ -544,12 +676,14 @@ func (s *Store) StoreIssues(issues []Issue) error {
 	var projects []Project
 	var users []User
 	var states []State
+	var labels []Label
 
 	for _, issue := range issues {
 		teams = append(teams, issue.Team)
 		states = append(states, issue.State)
 		projects = append(projects, issue.Project)
 		users = append(users, issue.Assignee)
+		labels = append(labels, issue.Labels...)
 	}
 
 	err := s.StoreTeams(teams)
@@ -568,13 +702,16 @@ func (s *Store) StoreIssues(issues []Issue) error {
 	if err != nil {
 		return fmt.Errorf("failed to store users: %w", err)
 	}
+	err = s.StoreLabels(labels)
+	if err != nil {
+		return fmt.Errorf("failed to store labels: %w", err)
+	}
 
 	type issueModel struct {
 		ID          string
 		Identifier  string
 		Title       string
 		Description string
-		Labels      Label
 		Priority    Prio
 		TeamID      string
 		StateID     string
@@ -586,8 +723,18 @@ func (s *Store) StoreIssues(issues []Issue) error {
 		CanceledAt  *time.Time
 	}
 
+	type issueLabelModel struct {
+		IssueID string
+		LabelID string
+	}
+
+	var issueIDs []string
 	var issueModels []issueModel
+	var issueLabels []issueLabelModel
+
 	for _, issue := range issues {
+		issueIDs = append(issueIDs, issue.ID)
+
 		projectID := issue.Project.ID
 		if projectID == "" {
 			projectID = getEmptyProjectID(s.current.Org.ID)
@@ -598,7 +745,6 @@ func (s *Store) StoreIssues(issues []Issue) error {
 			Identifier:  issue.Identifier,
 			Title:       issue.Title,
 			Description: issue.Description,
-			Labels:      issue.Labels,
 			Priority:    issue.Priority,
 			TeamID:      issue.Team.ID,
 			StateID:     issue.State.ID,
@@ -612,19 +758,26 @@ func (s *Store) StoreIssues(issues []Issue) error {
 			UpdatedAt:  issue.UpdatedAt,
 			CanceledAt: issue.CanceledAt,
 		})
+
+		for _, label := range issue.Labels {
+			issueLabels = append(issueLabels, issueLabelModel{
+				IssueID: issue.ID,
+				LabelID: label.ID,
+			})
+		}
 	}
 
 	_, err = s.db.NamedExec(fmt.Sprintf(`
 		INSERT INTO issues (
 			id, identifier, title, 
-			description, labels, priority, 
+			description, priority, 
 			team_id, state_id, assignee_id, 
 			project_id, pinned, created_at, 
 			updated_at, canceled_at, org_id
 		)
 		VALUES (
 			:id, :identifier, :title, 
-			:description, :labels, :priority, 
+			:description, :priority, 
 			:team_id, :state_id, :assignee_id, 
 			:project_id, :pinned, :created_at, 
 			:updated_at, :canceled_at, %s
@@ -634,7 +787,6 @@ func (s *Store) StoreIssues(issues []Issue) error {
 			title = EXCLUDED.title,
 			priority = EXCLUDED.priority,
 			description = EXCLUDED.description,
-			labels = EXCLUDED.labels,
 			state_id = EXCLUDED.state_id,
 			project_id = EXCLUDED.project_id,
 			team_id = EXCLUDED.team_id,
@@ -647,6 +799,32 @@ func (s *Store) StoreIssues(issues []Issue) error {
 	)
 	if err != nil {
 		return fmt.Errorf("couldn't store issues: %w", err)
+	}
+
+	query, args, err := sqlx.In(`
+		DELETE FROM issue_label 
+		WHERE issue_id IN (?)`,
+		issueIDs,
+	)
+	if err != nil {
+		return fmt.Errorf("couldn't generate sqlx.In for labels: %w", err)
+	}
+
+	_, err = s.db.Exec(query, args...)
+	if err != nil {
+		return fmt.Errorf("couldn't delete issue labels: %w", err)
+	}
+
+	if len(issueLabels) == 0 {
+		return nil
+	}
+
+	_, err = s.db.NamedExec(`
+		INSERT INTO issue_label (issue_id, label_id)
+		VALUES (:issue_id, :label_id)
+	`, issueLabels)
+	if err != nil {
+		return fmt.Errorf("couldn't insert issue labels: %w", err)
 	}
 
 	return nil
@@ -858,6 +1036,12 @@ func (s *Store) updateSearchIndex() error {
 	}
 
 	_, err = tx.Exec(`
+		WITH json_labels AS (
+			SELECT issue_id, group_concat(labels.name, ' ') as labels
+			FROM issue_label
+			JOIN labels ON labels.id = issue_label.label_id
+			GROUP BY issue_id
+		)
 		INSERT INTO search (id, title, description, state, project, team, assignee, labels)
 		SELECT issues.id, 
 			title, 
@@ -866,13 +1050,14 @@ func (s *Store) updateSearchIndex() error {
 			projects.name, 
 			teams.name, 
 			users.name,
-			(SELECT group_concat(value->>'$.Name', ' ') FROM json_each(issues.labels))
+			json_labels.labels
 		FROM issues
 		INNER JOIN orgs ON issues.org_id = orgs.id
 		LEFT JOIN users ON issues.assignee_id = users.id
 		LEFT JOIN projects ON issues.project_id = projects.id
 		LEFT JOIN teams ON issues.team_id = teams.id
 		LEFT JOIN states ON issues.state_id = states.id
+		LEFT JOIN json_labels ON json_labels.issue_id = issues.id
 		WHERE orgs.active = TRUE AND
 			(
 				updated_at >= orgs.synced_at OR

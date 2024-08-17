@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -61,18 +60,6 @@ func (c *Client) GetIssues(lastSync time.Time, after *string) tea.Cmd {
 		var issues []store.Issue
 
 		for _, iss := range resp.Issues.GetNodes() {
-			var labels []store.ParsedLabel
-			for _, l := range iss.GetLabels().GetNodes() {
-				labels = append(labels, store.ParsedLabel{
-					Name:  l.Name,
-					Color: l.Color,
-				})
-			}
-			encodedLabelsB, err := json.Marshal(labels)
-			if err != nil {
-				panic(err)
-			}
-
 			createdAt, err := time.Parse(time.RFC3339, iss.CreatedAt)
 			if err != nil {
 				return fmt.Errorf("error parsing created_at")
@@ -92,6 +79,16 @@ func (c *Client) GetIssues(lastSync time.Time, after *string) tea.Cmd {
 				canceledAt = &t
 			}
 
+			labels := make([]store.Label, len(iss.Labels.GetNodes()))
+			for i, label := range iss.Labels.GetNodes() {
+				labels[i] = store.Label{
+					ID:     label.ID,
+					Name:   label.Name,
+					Color:  label.Color,
+					TeamID: label.GetTeam().GetID(),
+				}
+			}
+
 			is := store.Issue{
 				ID:          iss.GetID(),
 				Identifier:  iss.GetIdentifier(),
@@ -104,7 +101,7 @@ func (c *Client) GetIssues(lastSync time.Time, after *string) tea.Cmd {
 					Email:       iss.GetAssignee().GetEmail(),
 					IsMe:        iss.GetAssignee().GetIsMe(),
 				},
-				Labels:   encodedLabelsB,
+				Labels:   labels,
 				Priority: store.Prio(iss.GetPriority()),
 				Team: store.Team{
 					ID:    iss.GetTeam().GetID(),

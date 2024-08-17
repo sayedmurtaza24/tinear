@@ -342,7 +342,7 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 		onPop := func() tea.Msg {
 			m.table.Focus()
 			m.updateTableCols()
-			return nil
+			return forceUpdate()
 		}
 
 		if key.String() != "e" {
@@ -365,6 +365,8 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 		}
 
 		switch key.String() {
+		default:
+			return nil
 		case "p": // projects
 			mode = SelectorModeProject
 
@@ -451,6 +453,7 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 				})
 			}
 		case "l": // labels
+
 		case "t": // title
 			mode = SelectorModeTitle
 
