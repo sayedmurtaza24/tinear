@@ -1466,7 +1466,7 @@ type Customer struct {
 	// The ID of the Slack channel used to interact with the customer.
 	SlackChannelID *string `json:"slackChannelId,omitempty"`
 	// The user who owns the customer.
-	Owner *User `json:"owner"`
+	Owner *User `json:"owner,omitempty"`
 	// The current status of the customer.
 	Status *CustomerStatus `json:"status"`
 }
@@ -1531,6 +1531,14 @@ type CustomerCreateInput struct {
 	StatusID *string `json:"statusId,omitempty"`
 }
 
+// Customer creation date sorting options.
+type CustomerCreatedAtSort struct {
+	// Whether nulls should be sorted first or last
+	Nulls *PaginationNulls `json:"nulls,omitempty"`
+	// The order for the individual sort
+	Order *PaginationSortOrder `json:"order,omitempty"`
+}
+
 type CustomerEdge struct {
 	Node *Customer `json:"node"`
 	// Used in `before` and `after` args
@@ -1586,6 +1594,12 @@ type CustomerNeed struct {
 	Attachment *Attachment `json:"attachment,omitempty"`
 	// The priority of the customer need. 0 = No priority, 1 = Critical, 2 = Important, 3 = Nice to have.
 	Priority float64 `json:"priority"`
+	// The need content in markdown format.
+	Body *string `json:"body,omitempty"`
+	// [Internal] The content of the need as a Prosemirror document.
+	BodyData *string `json:"bodyData,omitempty"`
+	// The creator of the customer need.
+	Creator *User `json:"creator,omitempty"`
 }
 
 func (CustomerNeed) IsNode() {}
@@ -1640,8 +1654,14 @@ type CustomerNeedCreateInput struct {
 	ProjectID *string `json:"projectId,omitempty"`
 	// The comment this need is referencing.
 	CommentID *string `json:"commentId,omitempty"`
+	// The attachment this need is referencing.
+	AttachmentID *string `json:"attachmentId,omitempty"`
 	// The priority of the customer need. 0 = No priority, 1 = Critical, 2 = Important, 3 = Nice to have.
 	Priority *float64 `json:"priority,omitempty"`
+	// The content of the need in markdown format.
+	Body *string `json:"body,omitempty"`
+	// [Internal] The content of the need as a Prosemirror document.
+	BodyData *string `json:"bodyData,omitempty"`
 }
 
 type CustomerNeedEdge struct {
@@ -1686,8 +1706,14 @@ type CustomerNeedPayload struct {
 type CustomerNeedUpdateInput struct {
 	// The identifier in UUID v4 format. If none is provided, the backend will generate one.
 	ID *string `json:"id,omitempty"`
+	// The uuid of the customer the need belongs to.
+	CustomerID *string `json:"customerId,omitempty"`
 	// The priority of the customer need. 0 = No priority, 1 = Critical, 2 = Important, 3 = Nice to have.
 	Priority *float64 `json:"priority,omitempty"`
+	// The content of the need in markdown format.
+	Body *string `json:"body,omitempty"`
+	// [Internal] The content of the need as a Prosemirror document.
+	BodyData *string `json:"bodyData,omitempty"`
 }
 
 type CustomerPayload struct {
@@ -1767,6 +1793,18 @@ type CustomerSchemaFieldEdge struct {
 	Cursor string `json:"cursor"`
 }
 
+// Customer sorting options.
+type CustomerSortInput struct {
+	// Sort by name
+	Name *NameSort `json:"name,omitempty"`
+	// Sort by customer creation date
+	CreatedAt *CustomerCreatedAtSort `json:"createdAt,omitempty"`
+	// Sort by owner name
+	Owner *CustomerCreatedAtSort `json:"owner,omitempty"`
+	// Sort by customer status
+	Status *CustomerStatusSort `json:"status,omitempty"`
+}
+
 // [ALPHA] A customer status.
 type CustomerStatus struct {
 	// The unique identifier of the entity.
@@ -1829,6 +1867,14 @@ type CustomerStatusPayload struct {
 	Status *CustomerStatus `json:"status"`
 	// Whether the operation was successful.
 	Success bool `json:"success"`
+}
+
+// Customer status sorting options.
+type CustomerStatusSort struct {
+	// Whether nulls should be sorted first or last
+	Nulls *PaginationNulls `json:"nulls,omitempty"`
+	// The order for the individual sort
+	Order *PaginationSortOrder `json:"order,omitempty"`
 }
 
 type CustomerStatusUpdateInput struct {
@@ -2974,6 +3020,12 @@ type EmojiPayload struct {
 	Success bool `json:"success"`
 }
 
+// Contains either the full serialized state of the application or delta packets that the requester can apply to the local data set in order to be up-to-date.
+type EntityCountResponse struct {
+	// Entity counts keyed by the entity name.
+	Counts string `json:"counts"`
+}
+
 // An external link for an entity like initiative, etc...
 type EntityExternalLink struct {
 	// The unique identifier of the entity.
@@ -3807,9 +3859,9 @@ type Initiative struct {
 	// The organization of the initiative.
 	Organization *Organization `json:"organization"`
 	// The user who created the initiative.
-	Creator *User `json:"creator"`
+	Creator *User `json:"creator,omitempty"`
 	// The user who owns the initiative.
-	Owner *User `json:"owner"`
+	Owner *User `json:"owner,omitempty"`
 	// The initiative's unique URL slug.
 	SlugID string `json:"slugId"`
 	// The sort order of the initiative within the organization.
@@ -4556,6 +4608,8 @@ type IntegrationsSettingsCreateInput struct {
 	TeamID *string `json:"teamId,omitempty"`
 	// The identifier of the project to create settings for.
 	ProjectID *string `json:"projectId,omitempty"`
+	// The identifier of the custom view to create settings for.
+	CustomViewID *string `json:"customViewId,omitempty"`
 }
 
 type IntegrationsSettingsEdge struct {
@@ -5000,6 +5054,121 @@ func (IssueDraft) IsNode() {}
 
 // The unique identifier of the entity.
 func (this IssueDraft) GetID() string { return this.ID }
+
+// A generic payload return from entity archive mutations.
+type IssueDraftArchivePayload struct {
+	// The identifier of the last sync operation.
+	LastSyncID float64 `json:"lastSyncId"`
+	// Whether the operation was successful.
+	Success bool `json:"success"`
+	// The archived/unarchived entity. Null if entity was deleted.
+	Entity *IssueDraft `json:"entity,omitempty"`
+}
+
+func (IssueDraftArchivePayload) IsArchivePayload() {}
+
+// The identifier of the last sync operation.
+func (this IssueDraftArchivePayload) GetLastSyncID() float64 { return this.LastSyncID }
+
+// Whether the operation was successful.
+func (this IssueDraftArchivePayload) GetSuccess() bool { return this.Success }
+
+type IssueDraftConnection struct {
+	Edges    []*IssueDraftEdge `json:"edges"`
+	Nodes    []*IssueDraft     `json:"nodes"`
+	PageInfo *PageInfo         `json:"pageInfo"`
+}
+
+type IssueDraftCreateInput struct {
+	// The identifier in UUID v4 format. If none is provided, the backend will generate one.
+	ID *string `json:"id,omitempty"`
+	// The title of the draft.
+	Title string `json:"title"`
+	// The draft description in markdown format.
+	Description *string `json:"description,omitempty"`
+	// [Internal] The draft description as a Prosemirror document.
+	DescriptionData *string `json:"descriptionData,omitempty"`
+	// The identifier of the user to assign the draft to.
+	AssigneeID *string `json:"assigneeId,omitempty"`
+	// The identifier of the parent draft.
+	ParentID *string `json:"parentId,omitempty"`
+	// The identifier of the parent issue.
+	ParentIssueID *string `json:"parentIssueId,omitempty"`
+	// The priority of the draft.
+	Priority *int64 `json:"priority,omitempty"`
+	// The estimated complexity of the draft.
+	Estimate *int64 `json:"estimate,omitempty"`
+	// The identifiers of the issue labels associated with this draft.
+	LabelIds []string `json:"labelIds,omitempty"`
+	// The identifier or key of the team associated with the draft.
+	TeamID string `json:"teamId"`
+	// The cycle associated with the draft.
+	CycleID *string `json:"cycleId,omitempty"`
+	// The project associated with the draft.
+	ProjectID *string `json:"projectId,omitempty"`
+	// The project milestone associated with the draft.
+	ProjectMilestoneID *string `json:"projectMilestoneId,omitempty"`
+	// The team state of the draft.
+	StateID *string `json:"stateId,omitempty"`
+	// The position of the draft in parent draft's sub-draft list.
+	SubIssueSortOrder *float64 `json:"subIssueSortOrder,omitempty"`
+	// The date at which the draft is due.
+	DueDate *string `json:"dueDate,omitempty"`
+	// The attachments associated with this draft.
+	Attachments *string `json:"attachments,omitempty"`
+}
+
+type IssueDraftEdge struct {
+	Node *IssueDraft `json:"node"`
+	// Used in `before` and `after` args
+	Cursor string `json:"cursor"`
+}
+
+type IssueDraftPayload struct {
+	// The identifier of the last sync operation.
+	LastSyncID float64 `json:"lastSyncId"`
+	// The draft that was created or updated.
+	IssueDraft *IssueDraft `json:"issueDraft"`
+	// Whether the operation was successful.
+	Success bool `json:"success"`
+}
+
+type IssueDraftUpdateInput struct {
+	// The title of the draft.
+	Title *string `json:"title,omitempty"`
+	// The draft description in markdown format.
+	Description *string `json:"description,omitempty"`
+	// The draft description as a Prosemirror document.
+	DescriptionData *string `json:"descriptionData,omitempty"`
+	// The identifier of the user to assign the draft to.
+	AssigneeID *string `json:"assigneeId,omitempty"`
+	// The identifier of the parent draft.
+	ParentID *string `json:"parentId,omitempty"`
+	// The identifier of the parent issue.
+	ParentIssueID *string `json:"parentIssueId,omitempty"`
+	// The priority of the draft.
+	Priority *int64 `json:"priority,omitempty"`
+	// The estimated complexity of the draft.
+	Estimate *int64 `json:"estimate,omitempty"`
+	// The identifiers of the issue labels associated with this draft.
+	LabelIds []string `json:"labelIds,omitempty"`
+	// The identifier or key of the team associated with the draft.
+	TeamID *string `json:"teamId,omitempty"`
+	// The cycle associated with the draft.
+	CycleID *string `json:"cycleId,omitempty"`
+	// The project associated with the draft.
+	ProjectID *string `json:"projectId,omitempty"`
+	// The project milestone associated with the draft.
+	ProjectMilestoneID *string `json:"projectMilestoneId,omitempty"`
+	// The team state of the draft.
+	StateID *string `json:"stateId,omitempty"`
+	// The position of the draft in parent draft's sub-draft list.
+	SubIssueSortOrder *float64 `json:"subIssueSortOrder,omitempty"`
+	// The date at which the draft is due.
+	DueDate *string `json:"dueDate,omitempty"`
+	// The attachments associated with this draft.
+	Attachments *string `json:"attachments,omitempty"`
+}
 
 type IssueEdge struct {
 	Node *Issue `json:"node"`
@@ -5872,7 +6041,7 @@ type IssueSearchResultEdge struct {
 	Cursor string `json:"cursor"`
 }
 
-// Issue filtering options.
+// Issue sorting options.
 type IssueSortInput struct {
 	// Sort by priority
 	Priority *PrioritySort `json:"priority,omitempty"`
@@ -6222,6 +6391,14 @@ type MilestoneSort struct {
 }
 
 type Mutation struct {
+}
+
+// Customer name sorting options.
+type NameSort struct {
+	// Whether nulls should be sorted first or last
+	Nulls *PaginationNulls `json:"nulls,omitempty"`
+	// The order for the individual sort
+	Order *PaginationSortOrder `json:"order,omitempty"`
 }
 
 // A generic payload return from entity archive mutations.
@@ -7680,6 +7857,14 @@ type OrganizationUpdateInput struct {
 	ThemeSettings *string `json:"themeSettings,omitempty"`
 }
 
+// Customer owner sorting options.
+type OwnerSort struct {
+	// Whether nulls should be sorted first or last
+	Nulls *PaginationNulls `json:"nulls,omitempty"`
+	// The order for the individual sort
+	Order *PaginationSortOrder `json:"order,omitempty"`
+}
+
 type PageInfo struct {
 	// Indicates if there are more results when paginating backward.
 	HasPreviousPage bool `json:"hasPreviousPage"`
@@ -7888,6 +8073,8 @@ type Project struct {
 	Links *ProjectLinkConnection `json:"links"`
 	// External links associated with the project.
 	ExternalLinks *EntityExternalLinkConnection `json:"externalLinks"`
+	// History entries associated with the project.
+	History *ProjectHistoryConnection `json:"history"`
 	// The overall progress of the project. This is the (completed estimate points + 0.25 * in progress estimate points) / total estimate points.
 	Progress float64 `json:"progress"`
 	// The health of the project based on the last project update.
@@ -8139,6 +8326,40 @@ type ProjectFilterSuggestionPayload struct {
 	Filter *string `json:"filter,omitempty"`
 }
 
+// An history associated with a project.
+type ProjectHistory struct {
+	// The unique identifier of the entity.
+	ID string `json:"id"`
+	// The time at which the entity was created.
+	CreatedAt string `json:"createdAt"`
+	// The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+	//     been updated after creation.
+	UpdatedAt string `json:"updatedAt"`
+	// The time at which the entity was archived. Null if the entity has not been archived.
+	ArchivedAt *string `json:"archivedAt,omitempty"`
+	// The project that the history is associated with.
+	Project *Project `json:"project"`
+	// The events that happened while recording that history.
+	Entries string `json:"entries"`
+}
+
+func (ProjectHistory) IsNode() {}
+
+// The unique identifier of the entity.
+func (this ProjectHistory) GetID() string { return this.ID }
+
+type ProjectHistoryConnection struct {
+	Edges    []*ProjectHistoryEdge `json:"edges"`
+	Nodes    []*ProjectHistory     `json:"nodes"`
+	PageInfo *PageInfo             `json:"pageInfo"`
+}
+
+type ProjectHistoryEdge struct {
+	Node *ProjectHistory `json:"node"`
+	// Used in `before` and `after` args
+	Cursor string `json:"cursor"`
+}
+
 // An external link for a project.
 type ProjectLink struct {
 	// The unique identifier of the entity.
@@ -8317,6 +8538,62 @@ type ProjectMilestoneFilter struct {
 	Or []*ProjectMilestoneFilter `json:"or,omitempty"`
 }
 
+type ProjectMilestoneMoveInput struct {
+	// The identifier of the project to move the milestone to.
+	ProjectID string `json:"projectId"`
+	// The team id to move the attached issues to. This is needed when there is a mismatch between a project's teams and the milestone's issues' teams. Either this or addIssueTeamToProject is required in that situation to resolve constraints.
+	NewIssueTeamID *string `json:"newIssueTeamId,omitempty"`
+	// Whether to add each milestone issue's team to the project. This is needed when there is a mismatch between a project's teams and the milestone's issues' teams. Either this or newIssueTeamId is required in that situation to resolve constraints.
+	AddIssueTeamToProject *bool `json:"addIssueTeamToProject,omitempty"`
+	// A list of issue id to team ids, used for undoing a previous milestone move where the specified issues were moved from the specified teams.
+	UndoIssueTeamIds []*ProjectMilestoneMoveIssueToTeamInput `json:"undoIssueTeamIds,omitempty"`
+	// A mapping of project id to a previous set of team ids, used for undoing a previous milestone move where the specified teams were added to the project.
+	UndoProjectTeamIds *ProjectMilestoneMoveProjectTeamsInput `json:"undoProjectTeamIds,omitempty"`
+}
+
+type ProjectMilestoneMoveIssueToTeam struct {
+	// The issue id in this relationship, you can use * as wildcard if all issues are being moved to the same team
+	IssueID string `json:"issueId"`
+	// The team id in this relationship
+	TeamID string `json:"teamId"`
+}
+
+// [Internal] Used for ProjectMilestoneMoveInput to describe a mapping between an issue and its team.
+type ProjectMilestoneMoveIssueToTeamInput struct {
+	// The issue id in this relationship, you can use * as wildcard if all issues are being moved to the same team
+	IssueID string `json:"issueId"`
+	// The team id in this relationship
+	TeamID string `json:"teamId"`
+}
+
+type ProjectMilestoneMovePayload struct {
+	// The identifier of the last sync operation.
+	LastSyncID float64 `json:"lastSyncId"`
+	// The project milestone that was created or updated.
+	ProjectMilestone *ProjectMilestone `json:"projectMilestone"`
+	// Whether the operation was successful.
+	Success bool `json:"success"`
+	// A snapshot of the issues that were moved to new teams, if the user selected to do it, containing an array of mappings between an issue and its previous team. Store on the client to use for undoing a previous milestone move.
+	PreviousIssueTeamIds []*ProjectMilestoneMoveIssueToTeam `json:"previousIssueTeamIds,omitempty"`
+	// A snapshot of the project that had new teams added to it, if the user selected to do it, containing an array of mappings between a project and its previous teams. Store on the client to use for undoing a previous milestone move.
+	PreviousProjectTeamIds *ProjectMilestoneMoveProjectTeams `json:"previousProjectTeamIds,omitempty"`
+}
+
+type ProjectMilestoneMoveProjectTeams struct {
+	// The project id
+	ProjectID string `json:"projectId"`
+	// The team ids for the project
+	TeamIds []string `json:"teamIds"`
+}
+
+// [Internal] Used for ProjectMilestoneMoveInput to describe a snapshot of a project and its team ids
+type ProjectMilestoneMoveProjectTeamsInput struct {
+	// The project id
+	ProjectID string `json:"projectId"`
+	// The team ids for the project
+	TeamIds []string `json:"teamIds"`
+}
+
 type ProjectMilestonePayload struct {
 	// The identifier of the last sync operation.
 	LastSyncID float64 `json:"lastSyncId"`
@@ -8337,6 +8614,8 @@ type ProjectMilestoneUpdateInput struct {
 	TargetDate *string `json:"targetDate,omitempty"`
 	// The sort order for the project milestone within a project.
 	SortOrder *float64 `json:"sortOrder,omitempty"`
+	// Related project for the project milestone.
+	ProjectID *string `json:"projectId,omitempty"`
 }
 
 // A project related notification.
@@ -8828,6 +9107,8 @@ type ProjectSearchResult struct {
 	Links *ProjectLinkConnection `json:"links"`
 	// External links associated with the project.
 	ExternalLinks *EntityExternalLinkConnection `json:"externalLinks"`
+	// History entries associated with the project.
+	History *ProjectHistoryConnection `json:"history"`
 	// The overall progress of the project. This is the (completed estimate points + 0.25 * in progress estimate points) / total estimate points.
 	Progress float64 `json:"progress"`
 	// The health of the project based on the last project update.
@@ -8937,7 +9218,7 @@ type ProjectStatusFilter struct {
 	Or []*ProjectStatusFilter `json:"or,omitempty"`
 }
 
-// A update associated with an project.
+// An update associated with a project.
 type ProjectUpdate struct {
 	// The unique identifier of the entity.
 	ID string `json:"id"`
@@ -10158,6 +10439,10 @@ type Team struct {
 	AutoArchivePeriod float64 `json:"autoArchivePeriod"`
 	// Whether parent issues should automatically close when all child issues are closed, and child issues should automatically close when the parent issue is closed.
 	AutoCloseParentAndChildIssues *bool `json:"autoCloseParentAndChildIssues,omitempty"`
+	// Whether parent issues should automatically close when all child issues are closed
+	AutoCloseParentIssues *bool `json:"autoCloseParentIssues,omitempty"`
+	// Whether child issues should automatically close when their parent issue is closed
+	AutoCloseChildIssues *bool `json:"autoCloseChildIssues,omitempty"`
 	// The workflow state into which issues are moved when they are marked as a duplicate of another issue. Defaults to the first canceled state.
 	MarkedAsDuplicateWorkflowState *WorkflowState `json:"markedAsDuplicateWorkflowState,omitempty"`
 	// [INTERNAL] Whether new users should join this team by default.
@@ -10616,8 +10901,10 @@ type TeamUpdateInput struct {
 	AutoClosePeriod *float64 `json:"autoClosePeriod,omitempty"`
 	// The canceled workflow state which auto closed issues will be set to.
 	AutoCloseStateID *string `json:"autoCloseStateId,omitempty"`
-	// [INTERNAL] Whether to automatically close a parent issue in this team if all its sub-issues are closed, and vice versa.
-	AutoCloseParentAndChildIssues *bool `json:"autoCloseParentAndChildIssues,omitempty"`
+	// [INTERNAL] Whether to automatically close a parent issue in this team if all its sub-issues are closed.
+	AutoCloseParentIssues *bool `json:"autoCloseParentIssues,omitempty"`
+	// [INTERNAL] Whether to automatically close all sub-issues when a parent issue in this team is closed.
+	AutoCloseChildIssues *bool `json:"autoCloseChildIssues,omitempty"`
 	// Period after which closed and completed issues are automatically archived, in months.
 	AutoArchivePeriod *float64 `json:"autoArchivePeriod,omitempty"`
 	// The workflow state into which issues are moved when they are marked as a duplicate of another issue.
@@ -11026,6 +11313,8 @@ type User struct {
 	Guest bool `json:"guest"`
 	// Whether the user account is active or disabled (suspended).
 	Active bool `json:"active"`
+	// The user's issue drafts
+	IssueDrafts *IssueDraftConnection `json:"issueDrafts"`
 	// User's profile URL.
 	URL string `json:"url"`
 	// Issues assigned to the user.
@@ -13308,6 +13597,50 @@ func (e *SlackChannelType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e SlackChannelType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+// How trashed models should be loaded.
+type TrashOptionType string
+
+const (
+	TrashOptionTypeIncludeTrash TrashOptionType = "includeTrash"
+	TrashOptionTypeExcludeTrash TrashOptionType = "excludeTrash"
+	TrashOptionTypeTrashOnly    TrashOptionType = "trashOnly"
+)
+
+var AllTrashOptionType = []TrashOptionType{
+	TrashOptionTypeIncludeTrash,
+	TrashOptionTypeExcludeTrash,
+	TrashOptionTypeTrashOnly,
+}
+
+func (e TrashOptionType) IsValid() bool {
+	switch e {
+	case TrashOptionTypeIncludeTrash, TrashOptionTypeExcludeTrash, TrashOptionTypeTrashOnly:
+		return true
+	}
+	return false
+}
+
+func (e TrashOptionType) String() string {
+	return string(e)
+}
+
+func (e *TrashOptionType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TrashOptionType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TrashOptionType", str)
+	}
+	return nil
+}
+
+func (e TrashOptionType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

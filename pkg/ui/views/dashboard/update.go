@@ -453,6 +453,39 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 				})
 			}
 		case "l": // labels
+			mode = SelectorModeLabels
+
+			issues, err := m.store.Issues(m.table.SelectedRows()...)
+			if err != nil {
+				return returnError(err)
+			}
+
+			var teamID string
+
+			for _, issue := range issues {
+				if teamID == "" {
+					teamID = issue.Team.ID
+					continue
+				}
+				if teamID != issue.Team.ID {
+					// just set it only default labels
+					teamID = ""
+					break
+				}
+			}
+
+			labels, err := m.store.Labels(teamID)
+			if err != nil {
+				return returnError(err)
+			}
+
+			for _, label := range labels {
+				suggestion = append(suggestion, input.Suggestion{
+					Identifier: label.ID,
+					Title:      label.Name,
+					Color:      label.Color,
+				})
+			}
 
 		case "t": // title
 			mode = SelectorModeTitle
@@ -677,7 +710,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	default:
-		log.Printf("recieved a msg that is not recognized here, type: %T, msg: %v", msg, msg)
+		log.Printf("received a msg that is not recognized here, type: %T, msg: %v", msg, msg)
 
 	case error:
 		m.err = msg
@@ -691,12 +724,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.handleBookmark(msg))
 		cmds = append(cmds, m.handleHover(msg))
 		cmds = append(cmds, m.handleOpen(msg))
+		cmds = append(cmds, m.handleSelector(msg))
 		cmds = append(cmds, m.handleSortMode(msg))
 		cmds = append(cmds, m.handleClose(msg))
 		cmds = append(cmds, m.handleFocus(msg))
 		cmds = append(cmds, m.handleProjectSelection(msg))
 		cmds = append(cmds, m.handleViews(msg))
-		cmds = append(cmds, m.handleSelector(msg))
 		cmds = append(cmds, m.handleDebug(msg))
 
 	case updateTablesMsg:
@@ -719,25 +752,48 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, msg.OnFailCommand)
 		}
 
-	case client.GetOrgRes:
-		changed, err := m.store.StoreOrg(msg.Result)
+	case client.GetMeRes:
+		orgChanged, err := m.store.StoreOrg(msg.Result.Org)
 		if err != nil {
 			return m, returnError(err)
 		}
 
-		if changed {
+		teamsChanged, err := m.store.StoreTeams(msg.Result.Teams)
+		if err != nil {
+			return m, returnError(err)
+		}
+
+		err = m.store.StoreLabels(msg.Result.Labels)
+		if err != nil {
+			return m, returnError(err)
+		}
+
+		err = m.store.StoreStates(msg.Result.States)
+		if err != nil {
+			return m, returnError(err)
+		}
+
+		var teamIDs []string
+		for _, team := range msg.Result.Teams {
+			teamIDs = append(teamIDs, team.ID)
+		}
+
+		if orgChanged || teamsChanged {
+			m.table.SetLoading(orgChanged)
 			m.syncing = true
-			m.table.SetLoading(true)
+
+			lastSync := m.store.Current().Org.SyncedAt
+			if teamsChanged {
+				lastSync = time.Now().Add(-6 * 30 * 24 * time.Hour)
+			}
 
 			cmds = append(cmds, tea.Batch(
 				m.client.GetProjects(nil),
-				m.client.GetTeams(nil),
 				m.client.GetUsers(nil),
-				m.client.GetStates(nil),
-				m.client.GetIssues(m.store.Current().Org.SyncedAt, nil),
+				m.client.GetIssues(lastSync, teamIDs, nil),
 			))
 		} else {
-			cmds = append(cmds, m.client.GetIssues(m.store.Current().Org.SyncedAt, nil))
+			cmds = append(cmds, m.client.GetIssues(m.store.Current().Org.SyncedAt, teamIDs, nil))
 
 			issues, err := m.store.Issues()
 			if err != nil {
@@ -764,29 +820,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, returnError(err)
 		}
 
-	case client.GetStatesRes:
-		if msg.After != nil {
-			cmds = append(cmds, m.client.GetStates(msg.After))
-		}
-		err := m.store.StoreStates(msg.Result)
-		if err != nil {
-			return m, returnError(err)
-		}
-
-	case client.GetTeamsRes:
-		if msg.After != nil {
-			cmds = append(cmds, m.client.GetTeams(msg.After))
-		}
-		err := m.store.StoreTeams(msg.Result)
-		if err != nil {
-			return m, returnError(err)
-		}
-
 	case client.GetIssuesRes:
-		if msg.After != nil {
-			cmds = append(cmds, m.client.GetIssues(m.store.Current().Org.SyncedAt, msg.After))
+		teams, err := m.store.Teams()
+		if err != nil {
+			return m, returnError(err)
 		}
-		err := m.store.StoreIssues(msg.Result)
+
+		var teamIDs []string
+		for _, team := range teams {
+			teamIDs = append(teamIDs, team.ID)
+		}
+
+		if msg.After != nil {
+			cmds = append(cmds, m.client.GetIssues(m.store.Current().Org.SyncedAt, teamIDs, msg.After))
+		}
+		err = m.store.StoreIssues(msg.Result)
 		if err != nil {
 			return m, returnError(err)
 		}

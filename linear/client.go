@@ -13,12 +13,9 @@ import (
 type LinearClient interface {
 	GetIssues(ctx context.Context, filter *models.IssueFilter, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetIssues, error)
 	BatchUpdateIssues(ctx context.Context, input models.IssueUpdateInput, ids []string, interceptors ...clientv2.RequestInterceptor) (*BatchUpdateIssues, error)
-	GetLabels(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetLabels, error)
-	GetOrg(ctx context.Context, interceptors ...clientv2.RequestInterceptor) (*GetOrg, error)
 	GetProjects(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetProjects, error)
-	GetStates(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetStates, error)
-	GetTeams(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetTeams, error)
 	GetAllUsers(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetAllUsers, error)
+	GetMe(ctx context.Context, interceptors ...clientv2.RequestInterceptor) (*GetMe, error)
 }
 
 type Client struct {
@@ -364,110 +361,6 @@ func (t *BatchUpdateIssues_IssueBatchUpdate) GetSuccess() bool {
 	return t.Success
 }
 
-type GetLabels_IssueLabels_Nodes_Team struct {
-	ID string "json:\"id\" graphql:\"id\""
-}
-
-func (t *GetLabels_IssueLabels_Nodes_Team) GetID() string {
-	if t == nil {
-		t = &GetLabels_IssueLabels_Nodes_Team{}
-	}
-	return t.ID
-}
-
-type GetLabels_IssueLabels_Nodes struct {
-	ID    string                            "json:\"id\" graphql:\"id\""
-	Color string                            "json:\"color\" graphql:\"color\""
-	Name  string                            "json:\"name\" graphql:\"name\""
-	Team  *GetLabels_IssueLabels_Nodes_Team "json:\"team,omitempty\" graphql:\"team\""
-}
-
-func (t *GetLabels_IssueLabels_Nodes) GetID() string {
-	if t == nil {
-		t = &GetLabels_IssueLabels_Nodes{}
-	}
-	return t.ID
-}
-func (t *GetLabels_IssueLabels_Nodes) GetColor() string {
-	if t == nil {
-		t = &GetLabels_IssueLabels_Nodes{}
-	}
-	return t.Color
-}
-func (t *GetLabels_IssueLabels_Nodes) GetName() string {
-	if t == nil {
-		t = &GetLabels_IssueLabels_Nodes{}
-	}
-	return t.Name
-}
-func (t *GetLabels_IssueLabels_Nodes) GetTeam() *GetLabels_IssueLabels_Nodes_Team {
-	if t == nil {
-		t = &GetLabels_IssueLabels_Nodes{}
-	}
-	return t.Team
-}
-
-type GetLabels_IssueLabels_PageInfo struct {
-	EndCursor   *string "json:\"endCursor,omitempty\" graphql:\"endCursor\""
-	HasNextPage bool    "json:\"hasNextPage\" graphql:\"hasNextPage\""
-}
-
-func (t *GetLabels_IssueLabels_PageInfo) GetEndCursor() *string {
-	if t == nil {
-		t = &GetLabels_IssueLabels_PageInfo{}
-	}
-	return t.EndCursor
-}
-func (t *GetLabels_IssueLabels_PageInfo) GetHasNextPage() bool {
-	if t == nil {
-		t = &GetLabels_IssueLabels_PageInfo{}
-	}
-	return t.HasNextPage
-}
-
-type GetLabels_IssueLabels struct {
-	Nodes    []*GetLabels_IssueLabels_Nodes "json:\"nodes\" graphql:\"nodes\""
-	PageInfo GetLabels_IssueLabels_PageInfo "json:\"pageInfo\" graphql:\"pageInfo\""
-}
-
-func (t *GetLabels_IssueLabels) GetNodes() []*GetLabels_IssueLabels_Nodes {
-	if t == nil {
-		t = &GetLabels_IssueLabels{}
-	}
-	return t.Nodes
-}
-func (t *GetLabels_IssueLabels) GetPageInfo() *GetLabels_IssueLabels_PageInfo {
-	if t == nil {
-		t = &GetLabels_IssueLabels{}
-	}
-	return &t.PageInfo
-}
-
-type GetOrg_Organization struct {
-	ID     string "json:\"id\" graphql:\"id\""
-	Name   string "json:\"name\" graphql:\"name\""
-	URLKey string "json:\"urlKey\" graphql:\"urlKey\""
-}
-
-func (t *GetOrg_Organization) GetID() string {
-	if t == nil {
-		t = &GetOrg_Organization{}
-	}
-	return t.ID
-}
-func (t *GetOrg_Organization) GetName() string {
-	if t == nil {
-		t = &GetOrg_Organization{}
-	}
-	return t.Name
-}
-func (t *GetOrg_Organization) GetURLKey() string {
-	if t == nil {
-		t = &GetOrg_Organization{}
-	}
-	return t.URLKey
-}
-
 type GetProjects_Projects_Nodes struct {
 	Name  string "json:\"name\" graphql:\"name\""
 	ID    string "json:\"id\" graphql:\"id\""
@@ -525,146 +418,6 @@ func (t *GetProjects_Projects) GetNodes() []*GetProjects_Projects_Nodes {
 func (t *GetProjects_Projects) GetPageInfo() *GetProjects_Projects_PageInfo {
 	if t == nil {
 		t = &GetProjects_Projects{}
-	}
-	return &t.PageInfo
-}
-
-type GetStates_WorkflowStates_Nodes_Team struct {
-	ID string "json:\"id\" graphql:\"id\""
-}
-
-func (t *GetStates_WorkflowStates_Nodes_Team) GetID() string {
-	if t == nil {
-		t = &GetStates_WorkflowStates_Nodes_Team{}
-	}
-	return t.ID
-}
-
-type GetStates_WorkflowStates_Nodes struct {
-	Color string                              "json:\"color\" graphql:\"color\""
-	ID    string                              "json:\"id\" graphql:\"id\""
-	Name  string                              "json:\"name\" graphql:\"name\""
-	Team  GetStates_WorkflowStates_Nodes_Team "json:\"team\" graphql:\"team\""
-}
-
-func (t *GetStates_WorkflowStates_Nodes) GetColor() string {
-	if t == nil {
-		t = &GetStates_WorkflowStates_Nodes{}
-	}
-	return t.Color
-}
-func (t *GetStates_WorkflowStates_Nodes) GetID() string {
-	if t == nil {
-		t = &GetStates_WorkflowStates_Nodes{}
-	}
-	return t.ID
-}
-func (t *GetStates_WorkflowStates_Nodes) GetName() string {
-	if t == nil {
-		t = &GetStates_WorkflowStates_Nodes{}
-	}
-	return t.Name
-}
-func (t *GetStates_WorkflowStates_Nodes) GetTeam() *GetStates_WorkflowStates_Nodes_Team {
-	if t == nil {
-		t = &GetStates_WorkflowStates_Nodes{}
-	}
-	return &t.Team
-}
-
-type GetStates_WorkflowStates_PageInfo struct {
-	EndCursor   *string "json:\"endCursor,omitempty\" graphql:\"endCursor\""
-	HasNextPage bool    "json:\"hasNextPage\" graphql:\"hasNextPage\""
-}
-
-func (t *GetStates_WorkflowStates_PageInfo) GetEndCursor() *string {
-	if t == nil {
-		t = &GetStates_WorkflowStates_PageInfo{}
-	}
-	return t.EndCursor
-}
-func (t *GetStates_WorkflowStates_PageInfo) GetHasNextPage() bool {
-	if t == nil {
-		t = &GetStates_WorkflowStates_PageInfo{}
-	}
-	return t.HasNextPage
-}
-
-type GetStates_WorkflowStates struct {
-	Nodes    []*GetStates_WorkflowStates_Nodes "json:\"nodes\" graphql:\"nodes\""
-	PageInfo GetStates_WorkflowStates_PageInfo "json:\"pageInfo\" graphql:\"pageInfo\""
-}
-
-func (t *GetStates_WorkflowStates) GetNodes() []*GetStates_WorkflowStates_Nodes {
-	if t == nil {
-		t = &GetStates_WorkflowStates{}
-	}
-	return t.Nodes
-}
-func (t *GetStates_WorkflowStates) GetPageInfo() *GetStates_WorkflowStates_PageInfo {
-	if t == nil {
-		t = &GetStates_WorkflowStates{}
-	}
-	return &t.PageInfo
-}
-
-type GetTeams_Teams_Nodes struct {
-	Name  string  "json:\"name\" graphql:\"name\""
-	ID    string  "json:\"id\" graphql:\"id\""
-	Color *string "json:\"color,omitempty\" graphql:\"color\""
-}
-
-func (t *GetTeams_Teams_Nodes) GetName() string {
-	if t == nil {
-		t = &GetTeams_Teams_Nodes{}
-	}
-	return t.Name
-}
-func (t *GetTeams_Teams_Nodes) GetID() string {
-	if t == nil {
-		t = &GetTeams_Teams_Nodes{}
-	}
-	return t.ID
-}
-func (t *GetTeams_Teams_Nodes) GetColor() *string {
-	if t == nil {
-		t = &GetTeams_Teams_Nodes{}
-	}
-	return t.Color
-}
-
-type GetTeams_Teams_PageInfo struct {
-	EndCursor   *string "json:\"endCursor,omitempty\" graphql:\"endCursor\""
-	HasNextPage bool    "json:\"hasNextPage\" graphql:\"hasNextPage\""
-}
-
-func (t *GetTeams_Teams_PageInfo) GetEndCursor() *string {
-	if t == nil {
-		t = &GetTeams_Teams_PageInfo{}
-	}
-	return t.EndCursor
-}
-func (t *GetTeams_Teams_PageInfo) GetHasNextPage() bool {
-	if t == nil {
-		t = &GetTeams_Teams_PageInfo{}
-	}
-	return t.HasNextPage
-}
-
-type GetTeams_Teams struct {
-	Nodes    []*GetTeams_Teams_Nodes "json:\"nodes\" graphql:\"nodes\""
-	PageInfo GetTeams_Teams_PageInfo "json:\"pageInfo\" graphql:\"pageInfo\""
-}
-
-func (t *GetTeams_Teams) GetNodes() []*GetTeams_Teams_Nodes {
-	if t == nil {
-		t = &GetTeams_Teams{}
-	}
-	return t.Nodes
-}
-func (t *GetTeams_Teams) GetPageInfo() *GetTeams_Teams_PageInfo {
-	if t == nil {
-		t = &GetTeams_Teams{}
 	}
 	return &t.PageInfo
 }
@@ -744,6 +497,224 @@ func (t *GetAllUsers_Users) GetPageInfo() *GetAllUsers_Users_PageInfo {
 	return &t.PageInfo
 }
 
+type GetMe_Viewer_Organization struct {
+	ID     string "json:\"id\" graphql:\"id\""
+	Name   string "json:\"name\" graphql:\"name\""
+	URLKey string "json:\"urlKey\" graphql:\"urlKey\""
+}
+
+func (t *GetMe_Viewer_Organization) GetID() string {
+	if t == nil {
+		t = &GetMe_Viewer_Organization{}
+	}
+	return t.ID
+}
+func (t *GetMe_Viewer_Organization) GetName() string {
+	if t == nil {
+		t = &GetMe_Viewer_Organization{}
+	}
+	return t.Name
+}
+func (t *GetMe_Viewer_Organization) GetURLKey() string {
+	if t == nil {
+		t = &GetMe_Viewer_Organization{}
+	}
+	return t.URLKey
+}
+
+type GetMe_Viewer_Teams_Nodes_States_Nodes struct {
+	ID    string "json:\"id\" graphql:\"id\""
+	Name  string "json:\"name\" graphql:\"name\""
+	Color string "json:\"color\" graphql:\"color\""
+}
+
+func (t *GetMe_Viewer_Teams_Nodes_States_Nodes) GetID() string {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes_States_Nodes{}
+	}
+	return t.ID
+}
+func (t *GetMe_Viewer_Teams_Nodes_States_Nodes) GetName() string {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes_States_Nodes{}
+	}
+	return t.Name
+}
+func (t *GetMe_Viewer_Teams_Nodes_States_Nodes) GetColor() string {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes_States_Nodes{}
+	}
+	return t.Color
+}
+
+type GetMe_Viewer_Teams_Nodes_States struct {
+	Nodes []*GetMe_Viewer_Teams_Nodes_States_Nodes "json:\"nodes\" graphql:\"nodes\""
+}
+
+func (t *GetMe_Viewer_Teams_Nodes_States) GetNodes() []*GetMe_Viewer_Teams_Nodes_States_Nodes {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes_States{}
+	}
+	return t.Nodes
+}
+
+type GetMe_Viewer_Teams_Nodes_Labels_Nodes_Team struct {
+	ID string "json:\"id\" graphql:\"id\""
+}
+
+func (t *GetMe_Viewer_Teams_Nodes_Labels_Nodes_Team) GetID() string {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes_Labels_Nodes_Team{}
+	}
+	return t.ID
+}
+
+type GetMe_Viewer_Teams_Nodes_Labels_Nodes struct {
+	ID      string                                      "json:\"id\" graphql:\"id\""
+	Color   string                                      "json:\"color\" graphql:\"color\""
+	Name    string                                      "json:\"name\" graphql:\"name\""
+	IsGroup bool                                        "json:\"isGroup\" graphql:\"isGroup\""
+	Team    *GetMe_Viewer_Teams_Nodes_Labels_Nodes_Team "json:\"team,omitempty\" graphql:\"team\""
+}
+
+func (t *GetMe_Viewer_Teams_Nodes_Labels_Nodes) GetID() string {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes_Labels_Nodes{}
+	}
+	return t.ID
+}
+func (t *GetMe_Viewer_Teams_Nodes_Labels_Nodes) GetColor() string {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes_Labels_Nodes{}
+	}
+	return t.Color
+}
+func (t *GetMe_Viewer_Teams_Nodes_Labels_Nodes) GetName() string {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes_Labels_Nodes{}
+	}
+	return t.Name
+}
+func (t *GetMe_Viewer_Teams_Nodes_Labels_Nodes) GetIsGroup() bool {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes_Labels_Nodes{}
+	}
+	return t.IsGroup
+}
+func (t *GetMe_Viewer_Teams_Nodes_Labels_Nodes) GetTeam() *GetMe_Viewer_Teams_Nodes_Labels_Nodes_Team {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes_Labels_Nodes{}
+	}
+	return t.Team
+}
+
+type GetMe_Viewer_Teams_Nodes_Labels struct {
+	Nodes []*GetMe_Viewer_Teams_Nodes_Labels_Nodes "json:\"nodes\" graphql:\"nodes\""
+}
+
+func (t *GetMe_Viewer_Teams_Nodes_Labels) GetNodes() []*GetMe_Viewer_Teams_Nodes_Labels_Nodes {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes_Labels{}
+	}
+	return t.Nodes
+}
+
+type GetMe_Viewer_Teams_Nodes struct {
+	ID     string                          "json:\"id\" graphql:\"id\""
+	Name   string                          "json:\"name\" graphql:\"name\""
+	Color  *string                         "json:\"color,omitempty\" graphql:\"color\""
+	States GetMe_Viewer_Teams_Nodes_States "json:\"states\" graphql:\"states\""
+	Labels GetMe_Viewer_Teams_Nodes_Labels "json:\"labels\" graphql:\"labels\""
+}
+
+func (t *GetMe_Viewer_Teams_Nodes) GetID() string {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes{}
+	}
+	return t.ID
+}
+func (t *GetMe_Viewer_Teams_Nodes) GetName() string {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes{}
+	}
+	return t.Name
+}
+func (t *GetMe_Viewer_Teams_Nodes) GetColor() *string {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes{}
+	}
+	return t.Color
+}
+func (t *GetMe_Viewer_Teams_Nodes) GetStates() *GetMe_Viewer_Teams_Nodes_States {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes{}
+	}
+	return &t.States
+}
+func (t *GetMe_Viewer_Teams_Nodes) GetLabels() *GetMe_Viewer_Teams_Nodes_Labels {
+	if t == nil {
+		t = &GetMe_Viewer_Teams_Nodes{}
+	}
+	return &t.Labels
+}
+
+type GetMe_Viewer_Teams struct {
+	Nodes []*GetMe_Viewer_Teams_Nodes "json:\"nodes\" graphql:\"nodes\""
+}
+
+func (t *GetMe_Viewer_Teams) GetNodes() []*GetMe_Viewer_Teams_Nodes {
+	if t == nil {
+		t = &GetMe_Viewer_Teams{}
+	}
+	return t.Nodes
+}
+
+type GetMe_Viewer struct {
+	ID           string                    "json:\"id\" graphql:\"id\""
+	Email        string                    "json:\"email\" graphql:\"email\""
+	Name         string                    "json:\"name\" graphql:\"name\""
+	DisplayName  string                    "json:\"displayName\" graphql:\"displayName\""
+	Organization GetMe_Viewer_Organization "json:\"organization\" graphql:\"organization\""
+	Teams        GetMe_Viewer_Teams        "json:\"teams\" graphql:\"teams\""
+}
+
+func (t *GetMe_Viewer) GetID() string {
+	if t == nil {
+		t = &GetMe_Viewer{}
+	}
+	return t.ID
+}
+func (t *GetMe_Viewer) GetEmail() string {
+	if t == nil {
+		t = &GetMe_Viewer{}
+	}
+	return t.Email
+}
+func (t *GetMe_Viewer) GetName() string {
+	if t == nil {
+		t = &GetMe_Viewer{}
+	}
+	return t.Name
+}
+func (t *GetMe_Viewer) GetDisplayName() string {
+	if t == nil {
+		t = &GetMe_Viewer{}
+	}
+	return t.DisplayName
+}
+func (t *GetMe_Viewer) GetOrganization() *GetMe_Viewer_Organization {
+	if t == nil {
+		t = &GetMe_Viewer{}
+	}
+	return &t.Organization
+}
+func (t *GetMe_Viewer) GetTeams() *GetMe_Viewer_Teams {
+	if t == nil {
+		t = &GetMe_Viewer{}
+	}
+	return &t.Teams
+}
+
 type GetIssues struct {
 	Issues GetIssues_Issues "json:\"issues\" graphql:\"issues\""
 }
@@ -766,28 +737,6 @@ func (t *BatchUpdateIssues) GetIssueBatchUpdate() *BatchUpdateIssues_IssueBatchU
 	return &t.IssueBatchUpdate
 }
 
-type GetLabels struct {
-	IssueLabels GetLabels_IssueLabels "json:\"issueLabels\" graphql:\"issueLabels\""
-}
-
-func (t *GetLabels) GetIssueLabels() *GetLabels_IssueLabels {
-	if t == nil {
-		t = &GetLabels{}
-	}
-	return &t.IssueLabels
-}
-
-type GetOrg struct {
-	Organization GetOrg_Organization "json:\"organization\" graphql:\"organization\""
-}
-
-func (t *GetOrg) GetOrganization() *GetOrg_Organization {
-	if t == nil {
-		t = &GetOrg{}
-	}
-	return &t.Organization
-}
-
 type GetProjects struct {
 	Projects GetProjects_Projects "json:\"projects\" graphql:\"projects\""
 }
@@ -799,28 +748,6 @@ func (t *GetProjects) GetProjects() *GetProjects_Projects {
 	return &t.Projects
 }
 
-type GetStates struct {
-	WorkflowStates GetStates_WorkflowStates "json:\"workflowStates\" graphql:\"workflowStates\""
-}
-
-func (t *GetStates) GetWorkflowStates() *GetStates_WorkflowStates {
-	if t == nil {
-		t = &GetStates{}
-	}
-	return &t.WorkflowStates
-}
-
-type GetTeams struct {
-	Teams GetTeams_Teams "json:\"teams\" graphql:\"teams\""
-}
-
-func (t *GetTeams) GetTeams() *GetTeams_Teams {
-	if t == nil {
-		t = &GetTeams{}
-	}
-	return &t.Teams
-}
-
 type GetAllUsers struct {
 	Users GetAllUsers_Users "json:\"users\" graphql:\"users\""
 }
@@ -830,6 +757,17 @@ func (t *GetAllUsers) GetUsers() *GetAllUsers_Users {
 		t = &GetAllUsers{}
 	}
 	return &t.Users
+}
+
+type GetMe struct {
+	Viewer GetMe_Viewer "json:\"viewer\" graphql:\"viewer\""
+}
+
+func (t *GetMe) GetViewer() *GetMe_Viewer {
+	if t == nil {
+		t = &GetMe{}
+	}
+	return &t.Viewer
 }
 
 const GetIssuesDocument = `query GetIssues ($filter: IssueFilter, $after: String, $first: Int = 50) {
@@ -932,66 +870,6 @@ func (c *Client) BatchUpdateIssues(ctx context.Context, input models.IssueUpdate
 	return &res, nil
 }
 
-const GetLabelsDocument = `query GetLabels ($after: String, $first: Int = 50) {
-	issueLabels(after: $after, first: $first) {
-		nodes {
-			id
-			color
-			name
-			team {
-				id
-			}
-		}
-		pageInfo {
-			endCursor
-			hasNextPage
-		}
-	}
-}
-`
-
-func (c *Client) GetLabels(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetLabels, error) {
-	vars := map[string]any{
-		"after": after,
-		"first": first,
-	}
-
-	var res GetLabels
-	if err := c.Client.Post(ctx, "GetLabels", GetLabelsDocument, &res, vars, interceptors...); err != nil {
-		if c.Client.ParseDataWhenErrors {
-			return &res, err
-		}
-
-		return nil, err
-	}
-
-	return &res, nil
-}
-
-const GetOrgDocument = `query GetOrg {
-	organization {
-		id
-		name
-		urlKey
-	}
-}
-`
-
-func (c *Client) GetOrg(ctx context.Context, interceptors ...clientv2.RequestInterceptor) (*GetOrg, error) {
-	vars := map[string]any{}
-
-	var res GetOrg
-	if err := c.Client.Post(ctx, "GetOrg", GetOrgDocument, &res, vars, interceptors...); err != nil {
-		if c.Client.ParseDataWhenErrors {
-			return &res, err
-		}
-
-		return nil, err
-	}
-
-	return &res, nil
-}
-
 const GetProjectsDocument = `query GetProjects ($after: String, $first: Int = 50) {
 	projects(after: $after, first: $first) {
 		nodes {
@@ -1015,75 +893,6 @@ func (c *Client) GetProjects(ctx context.Context, after *string, first *int64, i
 
 	var res GetProjects
 	if err := c.Client.Post(ctx, "GetProjects", GetProjectsDocument, &res, vars, interceptors...); err != nil {
-		if c.Client.ParseDataWhenErrors {
-			return &res, err
-		}
-
-		return nil, err
-	}
-
-	return &res, nil
-}
-
-const GetStatesDocument = `query GetStates ($after: String, $first: Int = 50) {
-	workflowStates(after: $after, first: $first) {
-		nodes {
-			color
-			id
-			name
-			team {
-				id
-			}
-		}
-		pageInfo {
-			endCursor
-			hasNextPage
-		}
-	}
-}
-`
-
-func (c *Client) GetStates(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetStates, error) {
-	vars := map[string]any{
-		"after": after,
-		"first": first,
-	}
-
-	var res GetStates
-	if err := c.Client.Post(ctx, "GetStates", GetStatesDocument, &res, vars, interceptors...); err != nil {
-		if c.Client.ParseDataWhenErrors {
-			return &res, err
-		}
-
-		return nil, err
-	}
-
-	return &res, nil
-}
-
-const GetTeamsDocument = `query GetTeams ($after: String, $first: Int = 50) {
-	teams(after: $after, first: $first) {
-		nodes {
-			name
-			id
-			color
-		}
-		pageInfo {
-			endCursor
-			hasNextPage
-		}
-	}
-}
-`
-
-func (c *Client) GetTeams(ctx context.Context, after *string, first *int64, interceptors ...clientv2.RequestInterceptor) (*GetTeams, error) {
-	vars := map[string]any{
-		"after": after,
-		"first": first,
-	}
-
-	var res GetTeams
-	if err := c.Client.Post(ctx, "GetTeams", GetTeamsDocument, &res, vars, interceptors...); err != nil {
 		if c.Client.ParseDataWhenErrors {
 			return &res, err
 		}
@@ -1129,13 +938,65 @@ func (c *Client) GetAllUsers(ctx context.Context, after *string, first *int64, i
 	return &res, nil
 }
 
+const GetMeDocument = `query GetMe {
+	viewer {
+		id
+		email
+		name
+		displayName
+		organization {
+			id
+			name
+			urlKey
+		}
+		teams {
+			nodes {
+				id
+				name
+				color
+				states {
+					nodes {
+						id
+						name
+						color
+					}
+				}
+				labels {
+					nodes {
+						id
+						color
+						name
+						isGroup
+						team {
+							id
+						}
+					}
+				}
+			}
+		}
+	}
+}
+`
+
+func (c *Client) GetMe(ctx context.Context, interceptors ...clientv2.RequestInterceptor) (*GetMe, error) {
+	vars := map[string]any{}
+
+	var res GetMe
+	if err := c.Client.Post(ctx, "GetMe", GetMeDocument, &res, vars, interceptors...); err != nil {
+		if c.Client.ParseDataWhenErrors {
+			return &res, err
+		}
+
+		return nil, err
+	}
+
+	return &res, nil
+}
+
 var DocumentOperationNames = map[string]string{
 	GetIssuesDocument:         "GetIssues",
 	BatchUpdateIssuesDocument: "BatchUpdateIssues",
-	GetLabelsDocument:         "GetLabels",
-	GetOrgDocument:            "GetOrg",
 	GetProjectsDocument:       "GetProjects",
-	GetStatesDocument:         "GetStates",
-	GetTeamsDocument:          "GetTeams",
 	GetAllUsersDocument:       "GetAllUsers",
+	GetMeDocument:             "GetMe",
 }

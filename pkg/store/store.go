@@ -39,9 +39,7 @@ var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
 
 var ErrNoOrgSelected = errors.New("no active org")
 
-var spaceRemoveRegEx = regexp.MustCompile("( |\t){2,}")
-
-func removeDuplicatesAndEmpties[T idGetter](list []T) []T {
+func removeDuplicatesAndEmpties[T storeResource](list []T) []T {
 	m := make(map[string]T)
 	for _, item := range list {
 		m[item.getID()] = item
@@ -54,6 +52,30 @@ func removeDuplicatesAndEmpties[T idGetter](list []T) []T {
 		res = append(res, v)
 	}
 	return res
+}
+
+func diffResource[T storeResource](base, compare []T) (added []T, existing []T, removedIDs []string) {
+	m := make(map[string]struct{})
+
+	for _, item := range base {
+		m[item.getID()] = struct{}{}
+	}
+
+	for _, item := range compare {
+		_, ok := m[item.getID()]
+		if ok {
+			existing = append(existing, item)
+			delete(m, item.getID())
+			continue
+		}
+		added = append(added, item)
+	}
+
+	for remain := range m {
+		removedIDs = append(removedIDs, remain)
+	}
+
+	return
 }
 
 func getEmptyProjectID(orgID string) string {
@@ -270,15 +292,13 @@ func (s *Store) Labels(teamID string) ([]Label, error) {
 		return nil, ErrNoOrgSelected
 	}
 
-	if teamID == "" {
-		return nil, errors.New("no team id was given")
-	}
+	teamQuery := "team_id = ?"
 
 	var labels []Label
 	err := s.db.Select(&labels, fmt.Sprintf(`
-		SELECT id, name, color, team_id 
+		SELECT id, name, color, COALESCE(team_id, '') AS team_id
 		FROM labels 
-		WHERE team_id = ? AND org_id = %s`, currentOrg),
+		WHERE (%s OR team_id IS NULL) AND org_id = %s`, teamQuery, currentOrg),
 		teamID,
 	)
 	if err != nil {
@@ -300,7 +320,7 @@ func (s *Store) StoreLabels(labels []Label) error {
 
 	_, err := s.db.NamedExec(fmt.Sprintf(`
 		INSERT INTO labels (id, name, color, team_id, org_id)
-		VALUES (:id, :name, :color, :team_id, %s)
+		VALUES (:id, :name, :color, NULLIF(:team_id, ''), %s)
 		ON CONFLICT (id) DO UPDATE 
 		SET name = EXCLUDED.name, 
 			color = EXCLUDED.color,
@@ -309,7 +329,7 @@ func (s *Store) StoreLabels(labels []Label) error {
 		labels,
 	)
 	if err != nil {
-		return fmt.Errorf("couldn't store labels: %w", err)
+		return fmt.Errorf("couldn't store labels: %w %+v", err, labels)
 	}
 
 	return nil
@@ -333,29 +353,62 @@ func (s *Store) Teams() ([]Team, error) {
 	return teams, nil
 }
 
-func (s *Store) StoreTeams(teams []Team) error {
+func (s *Store) StoreTeams(teams []Team) (bool, error) {
 	if s.current.Org.ID == "" {
-		return nil
+		return false, ErrNoOrgSelected
 	}
 
-	if len(teams) == 0 {
-		return nil
-	}
+	teams = removeDuplicatesAndEmpties(teams)
 
-	_, err := s.db.NamedExec(fmt.Sprintf(`
-		INSERT INTO teams (id, name, color, org_id)
-		VALUES (:id, :name, :color, %s)
-		ON CONFLICT (id) DO UPDATE 
-		SET name = EXCLUDED.name, 
-			color = EXCLUDED.color
-		`, currentOrg),
-		removeDuplicatesAndEmpties(teams),
-	)
+	currTeams, err := s.Teams()
 	if err != nil {
-		return fmt.Errorf("couldn't store teams: %w", err)
+		return false, fmt.Errorf("couldn't get current teams: %w", err)
 	}
 
-	return nil
+	added, existing, removedIDs := diffResource(currTeams, teams)
+
+	if len(added)+len(removedIDs) == 0 {
+		return false, nil
+	}
+
+	tx, err := s.db.Beginx()
+	if err != nil {
+		return false, fmt.Errorf("couldn't start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if len(removedIDs) > 0 {
+		q, args, err := sqlx.In(`DELETE FROM teams WHERE id IN (?)`, removedIDs)
+		if err != nil {
+			return false, fmt.Errorf("couldn't generate delete query for teams: %w", err)
+		}
+		_, err = tx.Exec(q, args...)
+		if err != nil {
+			return false, fmt.Errorf("couldn't delete teams: %w", err)
+		}
+	}
+
+	if len(added)+len(existing) > 0 {
+		_, err = tx.NamedExec(fmt.Sprintf(`
+			INSERT INTO teams (id, name, color, org_id)
+			VALUES (:id, :name, :color, %s)
+			ON CONFLICT (id) DO UPDATE 
+			SET name = EXCLUDED.name, 
+				color = EXCLUDED.color
+			`, currentOrg),
+			append(added, existing...),
+		)
+		if err != nil {
+			return false, fmt.Errorf("couldn't store/update teams: %w", err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return false, fmt.Errorf("couldn't commit transaction: %w", err)
+	}
+
+	return true, nil
 }
 
 func (s *Store) Projects() ([]Project, error) {
@@ -665,32 +718,26 @@ func (s *Store) SearchIssues(search string) ([]Issue, error) {
 
 func (s *Store) StoreIssues(issues []Issue) error {
 	if s.current.Org.ID == "" {
-		return nil
+		return ErrNoOrgSelected
 	}
 
 	if len(issues) == 0 {
 		return nil
 	}
 
-	var teams []Team
-	var projects []Project
 	var users []User
 	var states []State
 	var labels []Label
+	var projects []Project
 
 	for _, issue := range issues {
-		teams = append(teams, issue.Team)
 		states = append(states, issue.State)
 		projects = append(projects, issue.Project)
 		users = append(users, issue.Assignee)
 		labels = append(labels, issue.Labels...)
 	}
 
-	err := s.StoreTeams(teams)
-	if err != nil {
-		return fmt.Errorf("failed to store teams: %w", err)
-	}
-	err = s.StoreProjects(projects)
+	err := s.StoreProjects(projects)
 	if err != nil {
 		return fmt.Errorf("failed to store projects: %w", err)
 	}

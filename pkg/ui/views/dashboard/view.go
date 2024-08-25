@@ -285,7 +285,7 @@ func (m *Model) updateProjectsTable(projects []store.Project) {
 
 func (m *Model) View() string {
 	if m.err != nil {
-		return m.err.Error()
+		return lipgloss.NewStyle().Width(m.width).Render(m.err.Error())
 	}
 
 	if m.debug != "" {
@@ -328,6 +328,10 @@ func (m *Model) View() string {
 		selectorColOffset = m.table.ColumnOffset("state")
 		selectorColWidth = m.table.ColumnWidth("state")
 		selectorPlaceholder = "set state"
+	case SelectorModeLabels:
+		selectorColOffset = m.table.ColumnOffset("labels")
+		selectorColWidth = m.table.ColumnWidth("labels") - 1
+		selectorPlaceholder = "add/remove labels"
 	}
 	m.selector.SetPlaceholder(selectorPlaceholder)
 	m.selector.SetWidth(max(selectorColWidth, 20))

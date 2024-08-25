@@ -1,7 +1,0 @@
-query GetOrg {
-  organization {
-    id
-    name
-    urlKey
-  }
-}

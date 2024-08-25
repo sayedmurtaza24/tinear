@@ -35,6 +35,7 @@ const (
 	SelectorModeProject
 	SelectorModeTeam
 	SelectorModeTitle
+	SelectorModeLabels
 )
 
 var focusNextMap = map[focus][]focus{
@@ -128,7 +129,7 @@ func (m *Model) Init() tea.Cmd {
 		m.selector.Init(),
 		m.updateTables(),
 		m.table.SetLoading(m.store.Current().FirstTime),
-		m.client.GetOrg(),
+		m.client.GetMe(),
 	)
 }
 

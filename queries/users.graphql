@@ -13,3 +13,42 @@ query GetAllUsers($after: String, $first: Int = 50) {
     }
   }
 }
+
+query GetMe {
+  viewer {
+    id
+    email
+    name
+    displayName
+    organization {
+      id
+      name
+      urlKey
+    }
+    teams {
+      nodes {
+        id
+        name
+        color
+        states {
+          nodes {
+            id
+            name
+            color
+          }
+        }
+        labels {
+          nodes {
+            id
+            color
+            name
+            isGroup
+            team {
+              id
+            }
+          }
+        }
+      }
+    }
+  }
+}

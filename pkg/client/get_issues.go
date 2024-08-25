@@ -14,7 +14,7 @@ const syncThreshold = -6 * 30 * 24 * time.Hour
 
 type GetIssuesRes Resumable[[]store.Issue]
 
-func (c *Client) GetIssues(lastSync time.Time, after *string) tea.Cmd {
+func (c *Client) GetIssues(lastSync time.Time, teamIDs []string, after *string) tea.Cmd {
 	return func() tea.Msg {
 		syncedAt := lastSync.Format(time.RFC3339)
 
@@ -32,6 +32,11 @@ func (c *Client) GetIssues(lastSync time.Time, after *string) tea.Cmd {
 				},
 				{
 					CanceledAt: &models.NullableDateComparator{Gte: &syncedAt},
+				},
+			},
+			Team: &models.TeamFilter{
+				ID: &models.IDComparator{
+					In: teamIDs,
 				},
 			},
 		}

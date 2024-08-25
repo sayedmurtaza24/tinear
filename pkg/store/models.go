@@ -4,7 +4,9 @@ import (
 	"time"
 )
 
-type idGetter interface{ getID() string }
+type storeResource interface {
+	getID() string
+}
 
 type Org struct {
 	ID        string

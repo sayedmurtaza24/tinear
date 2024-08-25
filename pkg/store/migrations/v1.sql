@@ -53,7 +53,8 @@ CREATE TABLE states (
     color TEXT NOT NULL,
     team_id TEXT NOT NULL,
     org_id TEXT NOT NULL,
-    FOREIGN KEY (org_id) REFERENCES orgs(id)
+    FOREIGN KEY (org_id) REFERENCES orgs(id),
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 );
 
 CREATE TABLE issues (
@@ -73,7 +74,7 @@ CREATE TABLE issues (
     canceled_at TIMESTAMP,
     FOREIGN KEY (org_id) REFERENCES orgs(id),
     FOREIGN KEY (project_id) REFERENCES projects(id),
-    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
     FOREIGN KEY (assignee_id) REFERENCES users(id),
     FOREIGN KEY (project_id) REFERENCES projects(id)
 );
@@ -84,14 +85,15 @@ CREATE TABLE labels (
     color TEXT NOT NULL,
     team_id TEXT,
     org_id TEXT NOT NULL,
-    FOREIGN KEY (org_id) REFERENCES orgs(id)
+    FOREIGN KEY (org_id) REFERENCES orgs(id),
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
 );
 
 CREATE TABLE issue_label (
     issue_id TEXT NOT NULL,
     label_id TEXT NOT NULL,
-    FOREIGN KEY (label_id) REFERENCES labels(id),
-    FOREIGN KEY (issue_id) REFERENCES issues(id)
+    FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE,
+    FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
 ); 
 
 CREATE VIRTUAL TABLE search USING fts5 (

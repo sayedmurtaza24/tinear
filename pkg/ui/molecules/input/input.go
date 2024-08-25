@@ -195,6 +195,7 @@ func (m Model) View() string {
 
 	return lipgloss.NewStyle().
 		Width(m.width).
+		MarginRight(1).
 		Border(lipgloss.RoundedBorder(), true).
 		BorderForeground(lipgloss.Color("#333")).
 		Render(content)

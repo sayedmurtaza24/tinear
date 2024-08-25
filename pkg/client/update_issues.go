@@ -59,7 +59,7 @@ func (c *Client) UpdateIssues(issueIDs []string, onFail tea.Cmd, opts ...IssueUp
 			opt(&input)
 		}
 
-		resp, err := c.client.BatchUpdateIssues(context.Background(), any(input).(models.IssueUpdateInput), issueIDs)
+		resp, err := c.client.BatchUpdateIssues(context.Background(), input, issueIDs)
 		if err != nil {
 			return err
 		}
