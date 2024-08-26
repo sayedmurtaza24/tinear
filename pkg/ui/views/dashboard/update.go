@@ -574,12 +574,18 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 			}
 			updatedOpt = client.WithSetTitle(inputValue)
 			updatedValue = inputValue
+
+		case SelectorModeLabels:
+			updatedOpt = client.WithAddLabels(suggested.Identifier)
+			updatedValue = suggested.Identifier
 		}
 
-		err = m.store.UpdateIssues(updatedField, updatedValue, selectedIssueIDs...)
-		if err != nil {
-			return returnError(err)
-		}
+		// err = m.store.UpdateIssues(updatedField, updatedValue, selectedIssueIDs...)
+		// if err != nil {
+		// 	return returnError(err)
+		// }
+		_ = updatedField
+		_ = updatedValue
 
 		onFail := func() tea.Msg {
 			err := m.store.StoreIssues(selectedIssues)

@@ -8,7 +8,8 @@ import (
 )
 
 func GetAuthMiddleware(apiKey string) clientv2.RequestInterceptor {
-	return func(ctx context.Context,
+	return func(
+		ctx context.Context,
 		req *http.Request,
 		gqlInfo *clientv2.GQLRequestInfo,
 		res interface{},
