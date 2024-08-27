@@ -195,7 +195,7 @@ func (m *Model) handleHover(key tea.KeyMsg) tea.Cmd {
 }
 
 func (m *Model) handleClose(key tea.KeyMsg) tea.Cmd {
-	if m.focus.current() != FocusIssues {
+	if m.focus.current() != FocusIssues && m.focus.current() != FocusProjects {
 		return nil
 	}
 
