@@ -927,12 +927,58 @@ func (s *Store) UpdateIssues(field UpdateIssueField, value any, issueIDs ...stri
 		issueIDs,
 	)
 	if err != nil {
-		return fmt.Errorf("couldn't generate set assignee query: %w", err)
+		return fmt.Errorf("couldn't generate update issues query: %w", err)
 	}
 
 	_, err = s.db.Exec(query, args...)
 	if err != nil {
-		return fmt.Errorf("couldn't set assignees: %w", err)
+		return fmt.Errorf("couldn't update issues: %w", err)
+	}
+
+	return nil
+}
+
+type LabelUpdateAction int
+
+const (
+	LabelUpdateAdd LabelUpdateAction = iota
+	LabelUpdateRemove
+)
+
+func (s *Store) UpdateIssuesLabels(action LabelUpdateAction, labelID string, issueIDs ...string) error {
+	if len(issueIDs) == 0 {
+		return nil
+	}
+
+	var query string
+	var args []any
+	var err error
+
+	if action == LabelUpdateAdd {
+		query = `INSERT INTO issue_label (issue_id, label_id) VALUES (:issue_id, :label_id)`
+		type issueLabel struct {
+			IssueID string
+			LabelID string
+		}
+		for _, issueID := range issueIDs {
+			args = append(args, issueLabel{
+				IssueID: issueID,
+				LabelID: labelID,
+			})
+		}
+		_, err = s.db.NamedExec(query, args)
+		if err != nil {
+			return fmt.Errorf("couldn't update issue labels: %w", err)
+		}
+	} else {
+		query, args, err = sqlx.In(`DELETE FROM issue_label WHERE label_id = ? AND issue_id IN (?)`, labelID, issueIDs)
+		if err != nil {
+			return fmt.Errorf("couldn't generate remove labels query: %w", err)
+		}
+		_, err = s.db.Exec(query, args...)
+		if err != nil {
+			return fmt.Errorf("couldn't update issue labels: %w", err)
+		}
 	}
 
 	return nil

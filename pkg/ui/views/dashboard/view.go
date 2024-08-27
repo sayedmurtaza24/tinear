@@ -303,38 +303,42 @@ func (m *Model) View() string {
 
 	var selectorColOffset, selectorColWidth int
 	var selectorPlaceholder string
-	switch m.selectorMode {
-	case SelectorModeTitle:
-		selectorColOffset = m.table.ColumnOffset("title")
-		selectorColWidth = m.table.ColumnWidth("title")
-		selectorPlaceholder = "set title..."
-	case SelectorModeAssignee:
-		selectorColOffset = m.table.ColumnOffset("assignee")
-		selectorColWidth = m.table.ColumnWidth("assignee")
-		selectorPlaceholder = "set assignee"
-	case SelectorModePriority:
-		selectorColOffset = m.table.ColumnOffset("prio")
-		selectorColWidth = m.table.ColumnWidth("prio")
-		selectorPlaceholder = "set priority"
-	case SelectorModeProject:
-		selectorColOffset = m.table.ColumnOffset("project")
-		selectorColWidth = m.table.ColumnWidth("project")
-		selectorPlaceholder = "move to project"
-	case SelectorModeTeam:
-		selectorColOffset = m.table.ColumnOffset("team")
-		selectorColWidth = m.table.ColumnWidth("team")
-		selectorPlaceholder = "move to team"
-	case SelectorModeState:
-		selectorColOffset = m.table.ColumnOffset("state")
-		selectorColWidth = m.table.ColumnWidth("state")
-		selectorPlaceholder = "set state"
-	case SelectorModeLabels:
-		selectorColOffset = m.table.ColumnOffset("labels")
-		selectorColWidth = m.table.ColumnWidth("labels") - 1
-		selectorPlaceholder = "add/remove labels"
+
+	if m.focus.current() == FocusSelector {
+		switch m.selectorMode {
+		default:
+		case SelectorModeTitle:
+			selectorColOffset = m.table.ColumnOffset("title")
+			selectorColWidth = m.table.ColumnWidth("title")
+			selectorPlaceholder = "set title..."
+		case SelectorModeAssignee:
+			selectorColOffset = m.table.ColumnOffset("assignee")
+			selectorColWidth = m.table.ColumnWidth("assignee")
+			selectorPlaceholder = "set assignee"
+		case SelectorModePriority:
+			selectorColOffset = m.table.ColumnOffset("prio")
+			selectorColWidth = m.table.ColumnWidth("prio")
+			selectorPlaceholder = "set priority"
+		case SelectorModeProject:
+			selectorColOffset = m.table.ColumnOffset("project")
+			selectorColWidth = m.table.ColumnWidth("project")
+			selectorPlaceholder = "move to project"
+		case SelectorModeTeam:
+			selectorColOffset = m.table.ColumnOffset("team")
+			selectorColWidth = m.table.ColumnWidth("team")
+			selectorPlaceholder = "move to team"
+		case SelectorModeState:
+			selectorColOffset = m.table.ColumnOffset("state")
+			selectorColWidth = m.table.ColumnWidth("state")
+			selectorPlaceholder = "set state"
+		case SelectorModeLabels:
+			selectorColOffset = m.table.ColumnOffset("labels")
+			selectorColWidth = m.table.ColumnWidth("labels") - 1
+			selectorPlaceholder = "add/remove labels"
+		}
+		m.selector.SetPlaceholder(selectorPlaceholder)
+		m.selector.SetWidth(max(selectorColWidth, 20))
 	}
-	m.selector.SetPlaceholder(selectorPlaceholder)
-	m.selector.SetWidth(max(selectorColWidth, 20))
 
 	if m.currView == ViewProject {
 		issues = lipgloss.JoinHorizontal(

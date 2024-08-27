@@ -1,6 +1,7 @@
 package input
 
 import (
+	"log"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -15,8 +16,9 @@ import (
 type Suggestion struct {
 	Identifier string
 	// WARN: has to be unique
-	Title string
-	Color string
+	Title    string
+	Selected bool
+	Color    string
 }
 
 type Model struct {
@@ -33,7 +35,11 @@ func makeSuggestionRows(opts []Suggestion) []*table.Row {
 	for _, opt := range opts {
 		var rowNormal text.Focusable
 		if opt.Color != "" {
-			rowNormal = text.Colored(opt.Title, color.Simple(opt.Color))
+			if opt.Selected {
+				rowNormal = text.Chip(opt.Title, color.Simple("#fff"), color.Simple(opt.Color))
+			} else {
+				rowNormal = text.Colored(opt.Title, color.Simple(opt.Color))
+			}
 		} else {
 			rowNormal = text.Plain(opt.Title)
 		}
@@ -103,6 +109,10 @@ func (m *Model) Value() string {
 	return strings.TrimSpace(m.input.Value())
 }
 
+func (m *Model) Suggestions() []Suggestion {
+	return m.options
+}
+
 func (m *Model) SetSuggestions(suggestions []Suggestion) {
 	m.options = suggestions
 	m.suggestions.SetRows(makeSuggestionRows(suggestions))
@@ -118,6 +128,7 @@ func (m *Model) SetValue(value string) {
 }
 
 func (m *Model) SetWidth(width int) {
+	log.Println(width)
 	m.width = width
 	m.input.Width = width - 2
 	m.suggestions.SetWidth(width)

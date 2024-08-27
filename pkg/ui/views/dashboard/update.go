@@ -460,17 +460,20 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 				return returnError(err)
 			}
 
-			var teamID string
+			labelMap := make(map[string]struct{})
+			teams := make(map[string]struct{})
 
 			for _, issue := range issues {
-				if teamID == "" {
-					teamID = issue.Team.ID
-					continue
+				teams[issue.Team.ID] = struct{}{}
+				for _, label := range issue.Labels {
+					labelMap[label.ID] = struct{}{}
 				}
-				if teamID != issue.Team.ID {
-					// just set it only default labels
-					teamID = ""
-					break
+			}
+
+			var teamID string
+			if len(teams) == 1 {
+				for k := range teams {
+					teamID = k
 				}
 			}
 
@@ -480,10 +483,13 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 			}
 
 			for _, label := range labels {
+				_, exists := labelMap[label.ID]
+
 				suggestion = append(suggestion, input.Suggestion{
 					Identifier: label.ID,
 					Title:      label.Name,
 					Color:      label.Color,
+					Selected:   exists,
 				})
 			}
 
@@ -512,12 +518,18 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 			return cmd
 		}
 
-		m.table.SetVisualMode(false)
-
 		selectedIssueIDs := m.table.SelectedRows()
 		selectedIssues, err := m.store.Issues(selectedIssueIDs...)
 		if err != nil {
 			return returnError(err)
+		}
+
+		onFail := func() tea.Msg {
+			err := m.store.StoreIssues(selectedIssues)
+			if err != nil {
+				return returnError(err)
+			}
+			return m.updateTables()
 		}
 
 		suggested := m.selector.Highlighted()
@@ -526,13 +538,44 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 			return nil
 		}
 
+		var updatingLabel bool
 		var updatedField store.UpdateIssueField
 		var updatedOpt client.IssueUpdateOpt
 		var updatedValue any
+		var updateLabelAction store.LabelUpdateAction
 
 		switch m.selectorMode {
 		default:
 			return nil
+
+		case SelectorModeLabels:
+			updatingLabel = true
+			updatedValue = suggested.Identifier
+
+			modifySuggestions := func(highlight bool) {
+				current := suggested.Identifier
+				var newSuggs []input.Suggestion
+				for _, sug := range m.selector.Suggestions() {
+					newSug := sug
+					if sug.Identifier == current {
+						newSug.Selected = highlight
+					}
+					newSuggs = append(newSuggs, newSug)
+				}
+				m.selector.SetSuggestions(newSuggs)
+			}
+
+			if !suggested.Selected {
+				updateLabelAction = store.LabelUpdateAdd
+				updatedOpt = client.WithAddLabels(suggested.Identifier)
+				modifySuggestions(true)
+			} else {
+				updateLabelAction = store.LabelUpdateRemove
+				updatedOpt = client.WithRemoveLabels(suggested.Identifier)
+				modifySuggestions(false)
+			}
+
+			m.selector.SetValue("")
 
 		case SelectorModeAssignee:
 			updatedField = store.UpdateIssueFieldAssignee
@@ -574,40 +617,33 @@ func (m *Model) handleSelector(key tea.KeyMsg) (cmd tea.Cmd) {
 			}
 			updatedOpt = client.WithSetTitle(inputValue)
 			updatedValue = inputValue
-
-		case SelectorModeLabels:
-			updatedOpt = client.WithAddLabels(suggested.Identifier)
-			updatedValue = suggested.Identifier
 		}
 
-		// err = m.store.UpdateIssues(updatedField, updatedValue, selectedIssueIDs...)
-		// if err != nil {
-		// 	return returnError(err)
-		// }
-		_ = updatedField
-		_ = updatedValue
-
-		onFail := func() tea.Msg {
-			err := m.store.StoreIssues(selectedIssues)
+		if updatingLabel {
+			err = m.store.UpdateIssuesLabels(updateLabelAction, suggested.Identifier, selectedIssueIDs...)
 			if err != nil {
 				return returnError(err)
 			}
-			return m.updateTables()
+		} else {
+			err = m.store.UpdateIssues(updatedField, updatedValue, selectedIssueIDs...)
+			if err != nil {
+				return returnError(err)
+			}
 		}
 
 		updateIssues := m.client.UpdateIssues(selectedIssueIDs, onFail, updatedOpt)
 
+		if updatingLabel {
+			return updateIssues
+		}
 		return tea.Batch(m.focus.pop(), updateIssues)
 	}
 	return nil
 }
 
-func (m *Model) handleDebug(key tea.KeyMsg) tea.Cmd {
-	if key.String() == "+" {
-		m.debug = fmt.Sprintf(`focus=%v`, m.focus.current())
-	}
-	if key.String() == "-" {
-		m.debug = ""
+func (m *Model) handleRefresh(key tea.KeyMsg) (cmd tea.Cmd) {
+	if key.String() != "r" {
+
 	}
 	return nil
 }
@@ -736,7 +772,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.handleFocus(msg))
 		cmds = append(cmds, m.handleProjectSelection(msg))
 		cmds = append(cmds, m.handleViews(msg))
-		cmds = append(cmds, m.handleDebug(msg))
 
 	case updateTablesMsg:
 		m.table.SetLoading(false)

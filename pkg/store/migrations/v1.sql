@@ -93,7 +93,8 @@ CREATE TABLE issue_label (
     issue_id TEXT NOT NULL,
     label_id TEXT NOT NULL,
     FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE,
-    FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE
+    FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+    UNIQUE (issue_id, label_id)
 ); 
 
 CREATE VIRTUAL TABLE search USING fts5 (
