@@ -361,10 +361,47 @@ func (t *BatchUpdateIssues_IssueBatchUpdate) GetSuccess() bool {
 	return t.Success
 }
 
+type GetProjects_Projects_Nodes_Teams_Nodes struct {
+	ID    string  "json:\"id\" graphql:\"id\""
+	Name  string  "json:\"name\" graphql:\"name\""
+	Color *string "json:\"color,omitempty\" graphql:\"color\""
+}
+
+func (t *GetProjects_Projects_Nodes_Teams_Nodes) GetID() string {
+	if t == nil {
+		t = &GetProjects_Projects_Nodes_Teams_Nodes{}
+	}
+	return t.ID
+}
+func (t *GetProjects_Projects_Nodes_Teams_Nodes) GetName() string {
+	if t == nil {
+		t = &GetProjects_Projects_Nodes_Teams_Nodes{}
+	}
+	return t.Name
+}
+func (t *GetProjects_Projects_Nodes_Teams_Nodes) GetColor() *string {
+	if t == nil {
+		t = &GetProjects_Projects_Nodes_Teams_Nodes{}
+	}
+	return t.Color
+}
+
+type GetProjects_Projects_Nodes_Teams struct {
+	Nodes []*GetProjects_Projects_Nodes_Teams_Nodes "json:\"nodes\" graphql:\"nodes\""
+}
+
+func (t *GetProjects_Projects_Nodes_Teams) GetNodes() []*GetProjects_Projects_Nodes_Teams_Nodes {
+	if t == nil {
+		t = &GetProjects_Projects_Nodes_Teams{}
+	}
+	return t.Nodes
+}
+
 type GetProjects_Projects_Nodes struct {
-	Name  string "json:\"name\" graphql:\"name\""
-	ID    string "json:\"id\" graphql:\"id\""
-	Color string "json:\"color\" graphql:\"color\""
+	Name  string                           "json:\"name\" graphql:\"name\""
+	ID    string                           "json:\"id\" graphql:\"id\""
+	Color string                           "json:\"color\" graphql:\"color\""
+	Teams GetProjects_Projects_Nodes_Teams "json:\"teams\" graphql:\"teams\""
 }
 
 func (t *GetProjects_Projects_Nodes) GetName() string {
@@ -384,6 +421,12 @@ func (t *GetProjects_Projects_Nodes) GetColor() string {
 		t = &GetProjects_Projects_Nodes{}
 	}
 	return t.Color
+}
+func (t *GetProjects_Projects_Nodes) GetTeams() *GetProjects_Projects_Nodes_Teams {
+	if t == nil {
+		t = &GetProjects_Projects_Nodes{}
+	}
+	return &t.Teams
 }
 
 type GetProjects_Projects_PageInfo struct {
@@ -876,6 +919,13 @@ const GetProjectsDocument = `query GetProjects ($after: String, $first: Int = 50
 			name
 			id
 			color
+			teams {
+				nodes {
+					id
+					name
+					color
+				}
+			}
 		}
 		pageInfo {
 			endCursor

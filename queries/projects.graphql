@@ -4,6 +4,13 @@ query GetProjects($after: String, $first: Int = 50) {
       name
       id
       color
+      teams {
+        nodes {
+          id
+          name
+          color
+        }
+      }
     }
     pageInfo {
       endCursor

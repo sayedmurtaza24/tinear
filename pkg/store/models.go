@@ -22,6 +22,7 @@ type Project struct {
 	ID    string
 	Name  string
 	Color string
+	Teams []Team
 }
 
 type State struct {

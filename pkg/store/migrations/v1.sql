@@ -33,6 +33,14 @@ CREATE TABLE teams (
     FOREIGN KEY (org_id) REFERENCES orgs(id)
 );
 
+CREATE TABLE team_project (
+    team_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (project_id) REFERENCES projects(id),
+    UNIQUE (team_id, project_id)
+);
+
 CREATE TABLE users (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,

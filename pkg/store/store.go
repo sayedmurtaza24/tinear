@@ -440,7 +440,13 @@ func (s *Store) StoreProjects(projects []Project) error {
 		return nil
 	}
 
-	_, err := s.db.NamedExec(fmt.Sprintf(`
+	tx, err := s.db.Beginx()
+	if err != nil {
+		return fmt.Errorf("couldn't start store project tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.NamedExec(fmt.Sprintf(`
 		INSERT INTO projects (id, name, color, org_id)
 		VALUES (:id, :name, :color, %s)
 		ON CONFLICT (id) DO UPDATE 
@@ -450,6 +456,43 @@ func (s *Store) StoreProjects(projects []Project) error {
 	)
 	if err != nil {
 		return fmt.Errorf("couldn't store projects: %w", err)
+	}
+
+	type teamProject struct {
+		TeamID    string
+		ProjectID string
+	}
+
+	var projectIDs []string
+	var teamProjects []teamProject
+	for _, project := range projects {
+		projectIDs = append(projectIDs, project.ID)
+		for _, team := range project.Teams {
+			teamProjects = append(teamProjects, teamProject{
+				TeamID:    team.ID,
+				ProjectID: project.ID,
+			})
+		}
+	}
+
+	q, args, err := sqlx.In("DELETE FROM team_project WHERE id IN (?)", projectIDs)
+	if err != nil {
+		return fmt.Errorf("couldn't generate delete team project relations query: %w", err)
+	}
+
+	_, err = tx.Exec(q, args...)
+	if err != nil {
+		return fmt.Errorf("couldn't delete team relations: %w", err)
+	}
+
+	_, err = tx.NamedExec(`
+		INSERT INTO team_project (team_id, project_id)
+		VALUES (:team_id, :project_id)
+		ON CONFLICT (id) DO NOTHING`,
+		teamProjects,
+	)
+	if err != nil {
+		return fmt.Errorf("couldn't store project team relations: %w", err)
 	}
 
 	return nil
