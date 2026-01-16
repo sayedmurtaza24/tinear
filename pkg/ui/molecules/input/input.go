@@ -137,7 +137,7 @@ func (m *Model) SetWidth(width int) {
 func (m *Model) filterSuggestions() {
 	var available []Suggestion
 	for _, a := range m.options {
-		if strings.HasPrefix(
+		if strings.Contains(
 			strings.ToLower(a.Title),
 			strings.ToLower(m.input.Value()),
 		) {

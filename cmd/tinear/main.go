@@ -10,14 +10,14 @@ import (
 )
 
 func main() {
-	f, err := tea.LogToFile("tinear.log", "DEBUG")
+	f, err := tea.LogToFile("/tmp/tinear.log", "DEBUG")
 	if err != nil {
 		slog.Error("failed to setup logger", slog.Any("error", err))
 		return
 	}
 	defer f.Close()
 
-	store, err := store.New("db")
+	store, err := store.New("/tmp/tinear")
 	if err != nil {
 		slog.Error("failed to setup store", slog.Any("error", err))
 		return
